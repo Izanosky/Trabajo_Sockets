@@ -54,33 +54,6 @@ int main(int argc, char *argv[])
 
 	char buf[TAM_BUFFER];
 
-
-	FILE *fp;
-    char buffer[1024];
-
-	system("cat /etc/passwd >> ./aux.txt");
-
-	//pclose(fp);
-
-	printf("estamos aqui");
-
-	if((fp = fopen("/etc/passwd", "r")) == NULL) {
-		perror("Error al ejecutar last");
-		exit(1);
-	}
-
-	printf("Sesiones que contienen '19': \n");
-    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		//perror("Error al ejecutar last");
-        if (strstr(buffer, "kosky") != NULL) {
-            printf("%s", buffer);
-        }
-    }
-
-	pclose(fp);
-
-	exit(1);
-
 	//!/////////////////////////////////////////////////////////////////////
 
 	if (argc < 2 || (strcmp(argv[1], "TCP") != 0 && strcmp(argv[1], "UDP") != 0) || argc > 4)

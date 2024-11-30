@@ -44,9 +44,7 @@ void errout(char *); /* declare error out routine */
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
 
-int main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
 
 	int s_TCP, s_UDP; /* connected socket descriptor */
@@ -310,8 +308,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	struct hostent *hp;
 	long timevar;
 
-	struct linger linger; 
-
+	struct linger linger;
 
 	status = getnameinfo((struct sockaddr *)&clientaddr_in, sizeof(clientaddr_in),
 						 hostname, MAXHOST, NULL, 0, 0);
@@ -320,9 +317,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		if (inet_ntop(AF_INET, &(clientaddr_in.sin_addr), hostname, MAXHOST) == NULL)
 			perror(" inet_ntop \n");
 	}
-	
+
 	time(&timevar);
-	
+
 	printf("Startup from %s port %u at %s",
 		   hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
 
@@ -342,13 +339,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		{
 			errout(hostname);
 		}
-		
+
 		if (len == 0)
 		{
 			printf("Se ha cerrado la escritura while1\n");
 			break;
 		}
-		
+
 		int length = strlen(buf);
 		if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 		{
@@ -366,15 +363,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			len1 = recv(s, &buf[len], TAM_BUFFER - len, 0);
 			if (len1 == -1)
 				errout(hostname);
-			else if (len1 == 0) 
+			else if (len1 == 0)
 			{
 				printf("Se ha cerrado la escritura while 2\n");
 				break;
 			}
-				
+
 			len += len1;
 			printf("\n\nlen1: %d\n", len1);
-			//sleep(1);
+			// sleep(1);
 			length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 			{
@@ -384,36 +381,52 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 		printf("\n\n\nHola buenas tardes\n\n\n");
 
-	
+		char *usr = buf;
+		usr[strlen(usr) - 2] = '\0';
+		printf("Request: %s\n", usr);
 
-		// // los bucles anteriores son solo para la recepcion de datos
-		// int i = 0;
-		// int hayR = 0;
-		// int hayN = 0;
-		// while (i < strlen(buf))
-		// {
-		// 	if (buf[i] == '\n')
-		// 	{
-		// 		printf("Hay un /n en %d\n", i);
-		// 		hayN = 1;
-		// 	}
-		// 	else if (buf[i] == '\r')
-		// 	{
-		// 		printf("Hay un /r en %d\n", i);
-		// 		hayR = 1;
-		// 	}
+		system("getent passwd > ./aux.txt");
 
-		// 	i++;
-		// }
+		FILE *fp;
+		char info[512];
 
-		// if (hayN == 1 && hayR == 1)
-		// {
-		// 	strcpy(buf, "Hay tano /r como /n muy bien\n");
-		// }
-		// else
-		// {
-		// 	strcpy(buf, "No tienes lo que hace falta\n");
-		// }
+		if ((fp = fopen("aux.txt", "r")) == NULL)
+		{
+			perror("Error al ejecutar last");
+			exit(1);
+		}
+
+		printf("Sesiones que contienen '%s': \n", usr);
+		while (fgets(info, sizeof(info), fp) != NULL)
+		{
+			// Eliminar saltos de línea
+			info[strcspn(info, "\r\n")] = '\0';
+
+			// Buscar coincidencias
+			if (strstr(info, "system") != NULL)
+			{
+				printf("%s\n", info);
+
+				// Concatenar al buffer, verificando que no se desborde
+				if (strlen(buf) + strlen(info) + 2 < TAM_BUFFER)
+				{
+					strcat(buf, info);
+					strcat(buf, "\r\n"); // Añadir terminación de línea
+				}
+				else
+				{
+					// Enviar el buffer actual si está lleno
+					if (send(s, buf, strlen(buf), 0) != strlen(buf))
+					{
+						errout("hostname");
+					}
+					// Reiniciar el buffer y añadir la nueva línea
+					snprintf(buf, TAM_BUFFER, "%s", info);
+				}
+			}
+		}
+
+		fclose(fp);
 
 		/* Increment the request count. */
 		reqcnt++;
