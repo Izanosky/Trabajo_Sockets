@@ -333,6 +333,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 	// bucle de recepcion de requests
 	int flag = 1;
+
 	while (len = recv(s, buf, TAM_BUFFER, 0))
 	{
 		if (len == -1)
@@ -361,8 +362,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		while (flag != 0 && len < TAM_BUFFER)
 		{
 			len1 = recv(s, &buf[len], TAM_BUFFER - len, 0);
-			if (len1 == -1)
-				errout(hostname);
+			
+			if (len1 == -1) errout(hostname);
+			
 			else if (len1 == 0)
 			{
 				printf("Se ha cerrado la escritura while 2\n");
@@ -381,52 +383,71 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 		printf("\n\n\nHola buenas tardes\n\n\n");
 
-		char *usr = buf;
-		usr[strlen(usr) - 2] = '\0';
-		printf("Request: %s\n", usr);
-
-		system("getent passwd > ./aux.txt");
-
-		FILE *fp;
-		char info[512];
-
-		if ((fp = fopen("aux.txt", "r")) == NULL)
+		if (strcmp(buf, "\r\n\0") == 0)
 		{
-			perror("Error al ejecutar last");
-			exit(1);
+			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
 		}
-
-		printf("Sesiones que contienen '%s': \n", usr);
-		while (fgets(info, sizeof(info), fp) != NULL)
+		
+		else
 		{
-			// Eliminar saltos de línea
-			info[strcspn(info, "\r\n")] = '\0';
+			char usr[TAM_BUFFER];
+			strcpy(usr, buf);
+			usr[strcspn(usr, "\r\n")] = '\0';
+			printf("Request: %s\n", usr);
 
-			// Buscar coincidencias
-			if (strstr(info, "system") != NULL)
+			system("getent passwd > ./aux.txt");
+
+			FILE *fp;
+			char info[512];
+
+			if ((fp = fopen("aux.txt", "r")) == NULL)
 			{
-				printf("%s\n", info);
+				perror("Error al ejecutar last");
+				exit(1);
+			}
 
-				// Concatenar al buffer, verificando que no se desborde
-				if (strlen(buf) + strlen(info) + 2 < TAM_BUFFER)
+			// Limpiar el buffer
+			buf[0] = '\0';
+			
+			printf("Sesiones que contienen '%s': \n", usr);
+
+			while (fgets(info, sizeof(info), fp) != NULL)
+			{
+				// Eliminar saltos de línea
+				info[strcspn(info, "\r\n")] = '\0';
+
+				// Buscar coincidencias
+				if (strstr(info, usr) != NULL)
 				{
-					strcat(buf, info);
-					strcat(buf, "\r\n"); // Añadir terminación de línea
-				}
-				else
-				{
-					// Enviar el buffer actual si está lleno
-					if (send(s, buf, strlen(buf), 0) != strlen(buf))
+					printf("info %s\n", info);
+
+					// Concatenar al buffer, verificando que no se desborde
+					if (strlen(buf) + strlen(info) + 2 < TAM_BUFFER)
 					{
-						errout("hostname");
+						strcat(buf, info);
+						strcat(buf, "\r\n"); // Añadir terminación de línea
 					}
-					// Reiniciar el buffer y añadir la nueva línea
-					snprintf(buf, TAM_BUFFER, "%s", info);
+					else
+					{
+						// Enviar el buffer actual si está lleno
+						if (send(s, buf, strlen(buf), 0) != strlen(buf))
+						{
+							errout("hostname");
+						}
+						// Reiniciar el buffer y añadir la nueva línea
+						snprintf(buf, TAM_BUFFER, "%s", info);
+					}
 				}
 			}
-		}
 
-		fclose(fp);
+			if(strlen(buf) == 0)
+			{
+				strcpy(buf, "No se han encontrado coincidencias\r\n");
+			}
+
+			fclose(fp);
+		}
 
 		/* Increment the request count. */
 		reqcnt++;

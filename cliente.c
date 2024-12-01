@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 				i += j;
 			}
 			/* Print out message indicating the identity of this reply. */
-			printf("Hemos recibido esto de servidor %s\n", buf);
+			printf("Hemos recibido esto de servidor:\n%s\n", buf);
 		}
 
 		/* Print message indicating completion of task. */
