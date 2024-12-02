@@ -383,72 +383,27 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 		printf("\n\n\nHola buenas tardes\n\n\n");
 
+		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
 		if (strcmp(buf, "\r\n\0") == 0)
 		{
+			printf("Mesen de mono\r\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 		}
-		
-		else
+		else //y este para cuando ponemos un usuario en concreto
 		{
-			char usr[TAM_BUFFER];
+			//copiamos el nombre del usuario
+			char usr[50];
 			strcpy(usr, buf);
-			usr[strcspn(usr, "\r\n")] = '\0';
-			printf("Request: %s\n", usr);
 
-			char comando[100];
-			snprintf(comando, sizeof(comando), "getent passwd | grep -iw '%s' | awk -F: '{print $1, $5, $6, $7}' > ./aux.txt", usr);
+			char comando[100] = "getent passwd | grep -iw ";
+			//le quitamos el \r\n a usr
+			usr[strlen(usr) - 2] = '\0';
+			strcat(comando, usr);
+			strcat(comando, " | awk -F: '{print $1, $5, $6, $7}' > ./aux.txt");
+
+			printf("Comando: %s\n", comando);
 			system(comando);
-
-			FILE *fp;
-			char info[512];
-
-			if ((fp = fopen("aux.txt", "r")) == NULL)
-			{
-				perror("Error al ejecutar last");
-				exit(1);
-			}
-
-			// Limpiar el buffer
-			buf[0] = '\0';
-			
-			printf("Sesiones que contienen '%s': \n", usr);
-
-			while (fgets(info, sizeof(info), fp) != NULL)
-			{
-				// Eliminar saltos de línea
-				info[strcspn(info, "\r\n")] = '\0';
-
-				// Buscar coincidencias
-				if (strstr(info, usr) != NULL)
-				{
-					printf("info %s\n", info);
-
-					// Concatenar al buffer, verificando que no se desborde
-					if (strlen(buf) + strlen(info) + 2 < TAM_BUFFER)
-					{
-						strcat(buf, info);
-						strcat(buf, "\r\n"); // Añadir terminación de línea
-					}
-					else
-					{
-						// Enviar el buffer actual si está lleno
-						if (send(s, buf, strlen(buf), 0) != strlen(buf))
-						{
-							errout("hostname");
-						}
-						// Reiniciar el buffer y añadir la nueva línea
-						snprintf(buf, TAM_BUFFER, "%s", info);
-					}
-				}
-			}
-
-			if(strlen(buf) == 0)
-			{
-				strcpy(buf, "No se han encontrado coincidencias\r\n");
-			}
-
-			fclose(fp);
 		}
 
 		/* Increment the request count. */
