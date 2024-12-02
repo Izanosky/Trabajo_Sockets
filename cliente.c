@@ -29,7 +29,7 @@ extern int errno;
 #define PUERTO 9459
 #define TIMEOUT 6
 #define MAXHOST 512
-#define TAM_BUFFER 512
+#define TAM_BUFFER 516
 
 int main(int argc, char *argv[])
 {

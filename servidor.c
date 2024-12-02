@@ -22,7 +22,7 @@
 #define PUERTO 9459
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
 #define BUFFERSIZE 1024			/* maximum size of packets to be received */
-#define TAM_BUFFER 512
+#define TAM_BUFFER 516
 #define MAXHOST 128
 
 extern int errno;
@@ -396,7 +396,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			usr[strcspn(usr, "\r\n")] = '\0';
 			printf("Request: %s\n", usr);
 
-			system("getent passwd > ./aux.txt");
+			char comando[100];
+			snprintf(comando, sizeof(comando), "getent passwd | grep -iw '%s' | awk -F: '{print $1, $5, $6, $7}' > ./aux.txt", usr);
+			system(comando);
 
 			FILE *fp;
 			char info[512];
