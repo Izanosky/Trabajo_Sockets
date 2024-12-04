@@ -393,36 +393,16 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		}
 		else // y este para cuando ponemos un usuario en concreto
 		{
-			// copiamos el nombre del usuario
-			char usr[50] = {0};
-			int i = 0;
-			while (buf[i] == '\r' || buf[i] == '\n')
-			{
-				strcat(usr, (char *) buf[i]);
-				i++;
-			} 
-			//strcpy(usr, buf);
-			char comando[TAM_BUFFER];
+			//dividimos el buf para obtener solo el usuario
+			char *aux = strtok(buf, "\r\n");
+			char usr[50];
+			strcpy(usr, aux);
 
-			strcpy(buf, "");
+			char cmn[TAM_BUFFER];
 
-			// Eliminar '\r' y '\n' al final de la cadena
-			size_t len = strlen(usr);
-			if (len > 0 && usr[len - 1] == '\n')
-			{
-				usr[len - 1] = ' '; // Eliminar '\n'
-				len--;				 // Ajustar longitud
-			}
-			if (len > 0 && usr[len - 1] == '\r')
-			{
-				usr[len - 1] = ' '; // Eliminar '\r'
-			}
-
-			printf("Usuario: %s kasjfldjañsj\n", usr);
-
-			snprintf(comando, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux.txt", usr);
-			printf("Comando: %s\n", comando);
-			system(comando);
+			//creamos el comando para obtener la informacion del usuario
+			snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux.txt", usr);
+			system(cmn);
 
 			FILE *f = fopen("./aux.txt", "r");
 			if (f == NULL)
@@ -432,18 +412,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				break;
 			}
-
-			char aux[TAM_BUFFER];
-
-			while (fgets(aux, TAM_BUFFER, f) != NULL)
+			
+			while (fgets(buf, TAM_BUFFER, f) != NULL)
 			{
-				// obtenemos el primer campo delimitado por |
-				char *id = strtok(aux, "|");
-				// strcpy(comando, "lastlog -u ");
-				// strcat(comando, id);
-				// strcat(comando, " | tail -n +2 | awk '{print \"On since \" $4 \" \" $5 \" \" $6 \" \" $7 \" on \" $2 \" from \" $3}' > id.txt");
-				// system(comando);
+				printf("%s", buf);
 			}
+			
 		}
 
 		/* Increment the request count. */
