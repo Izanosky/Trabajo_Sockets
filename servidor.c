@@ -412,10 +412,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				break;
 			}
-			
+
+			remove("id.txt");
 			while (fgets(buf, TAM_BUFFER, f) != NULL)
 			{
-				printf("%s", buf);
+				aux = strtok(buf, "|");
+				strcpy(usr, aux);
+
+				snprintf(cmn, TAM_BUFFER, "lastlog -u %s | tail -n +2 | awk '{OFS=\"|\"; $4=\"\" substr($0, index($0, $4))}' >> id.txt", usr);
+				system(cmn);
 			}
 			
 		}
