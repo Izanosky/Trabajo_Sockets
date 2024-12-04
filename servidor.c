@@ -362,9 +362,10 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		while (flag != 0 && len < TAM_BUFFER)
 		{
 			len1 = recv(s, &buf[len], TAM_BUFFER - len, 0);
-			
-			if (len1 == -1) errout(hostname);
-			
+
+			if (len1 == -1)
+				errout(hostname);
+
 			else if (len1 == 0)
 			{
 				printf("Se ha cerrado la escritura while 2\n");
@@ -390,20 +391,59 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 		}
-		else //y este para cuando ponemos un usuario en concreto
+		else // y este para cuando ponemos un usuario en concreto
 		{
-			//copiamos el nombre del usuario
-			char usr[50];
-			strcpy(usr, buf);
+			// copiamos el nombre del usuario
+			char usr[50] = {0};
+			int i = 0;
+			while (buf[i] == '\r' || buf[i] == '\n')
+			{
+				strcat(usr, (char *) buf[i]);
+				i++;
+			} 
+			//strcpy(usr, buf);
+			char comando[TAM_BUFFER];
 
-			char comando[100] = "getent passwd | grep -iw ";
-			//le quitamos el \r\n a usr
-			usr[strlen(usr) - 2] = '\0';
-			strcat(comando, usr);
-			strcat(comando, " | awk -F: '{print $1, $5, $6, $7}' > ./aux.txt");
+			strcpy(buf, "");
 
+			// Eliminar '\r' y '\n' al final de la cadena
+			size_t len = strlen(usr);
+			if (len > 0 && usr[len - 1] == '\n')
+			{
+				usr[len - 1] = ' '; // Eliminar '\n'
+				len--;				 // Ajustar longitud
+			}
+			if (len > 0 && usr[len - 1] == '\r')
+			{
+				usr[len - 1] = ' '; // Eliminar '\r'
+			}
+
+			printf("Usuario: %s kasjfldjañsj\n", usr);
+
+			snprintf(comando, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux.txt", usr);
 			printf("Comando: %s\n", comando);
 			system(comando);
+
+			FILE *f = fopen("./aux.txt", "r");
+			if (f == NULL)
+			{
+				printf("Error opening file!\n");
+				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				break;
+			}
+
+			char aux[TAM_BUFFER];
+
+			while (fgets(aux, TAM_BUFFER, f) != NULL)
+			{
+				// obtenemos el primer campo delimitado por |
+				char *id = strtok(aux, "|");
+				// strcpy(comando, "lastlog -u ");
+				// strcat(comando, id);
+				// strcat(comando, " | tail -n +2 | awk '{print \"On since \" $4 \" \" $5 \" \" $6 \" \" $7 \" on \" $2 \" from \" $3}' > id.txt");
+				// system(comando);
+			}
 		}
 
 		/* Increment the request count. */
@@ -412,9 +452,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * request that a real server might do.
 		 */
 		sleep(1);
-		strcat(buf, "\r\n");
+		// strcat(buf, "\r\n");
 		/* Send a response back to the client. */
-		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+		if (send(s, "hola\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 			errout(hostname);
 	}
 

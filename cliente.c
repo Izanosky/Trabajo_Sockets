@@ -210,7 +210,9 @@ int main(int argc, char *argv[])
 			int length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 			{
+				//salimos del bucle de recepcion infinita si el mensaje es contiene \r\n
 				flag = 0;
+				break;
 			}
 
 			while (i < TAM_BUFFER || flag == 1)
