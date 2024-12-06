@@ -1,0 +1,1 @@
+kosky|,,,|/home/kosky|/bin/bash kosky|pts/1||Fri Dec  6 10:59:26 +0100 2024

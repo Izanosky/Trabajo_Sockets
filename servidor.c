@@ -40,6 +40,7 @@ extern int errno;
 void serverTCP(int s, struct sockaddr_in peeraddr_in);
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in);
 void errout(char *); /* declare error out routine */
+void combinar(char *file1, char *file2, char *outputFile);
 
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
@@ -387,20 +388,20 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
 		if (strcmp(buf, "\r\n\0") == 0)
 		{
-			printf("Mesen de mono\r\n");
+			printf("si\r\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 		}
 		else // y este para cuando ponemos un usuario en concreto
 		{
-			//dividimos el buf para obtener solo el usuario
+			// dividimos el buf para obtener solo el usuario
 			char *aux = strtok(buf, "\r\n");
 			char usr[50];
 			strcpy(usr, aux);
 
 			char cmn[TAM_BUFFER];
 
-			//creamos el comando para obtener la informacion del usuario
+			// creamos el comando para obtener la informacion del usuario
 			snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux.txt", usr);
 			system(cmn);
 
@@ -412,17 +413,57 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				break;
 			}
-
-			remove("id.txt");
-			while (fgets(buf, TAM_BUFFER, f) != NULL)
+			char abuf[TAM_BUFFER];
+			// por cada usuario, obtenemos su lastlogin
+			system("touch id.txt");
+			while (fgets(abuf, TAM_BUFFER, f) != NULL)
 			{
-				aux = strtok(buf, "|");
+				aux = strtok(abuf, "|");
 				strcpy(usr, aux);
 
-				snprintf(cmn, TAM_BUFFER, "lastlog -u %s | tail -n +2 | awk '{OFS=\"|\"; $4=\"\" substr($0, index($0, $4))}' >> id.txt", usr);
+				snprintf(cmn, TAM_BUFFER,
+						 "lastlog -u %s | tail -n +2 | awk '"
+						 "{"
+						 " term = ($2 ~ /^pts\\/|tty$/ ? $2 : \"\");"
+						 " ip = ($3 ~ /^[0-9.]+$/ ? $3 : \"\");"
+						 " time_start = (ip ? $4 : (term ? $3 : $2));"
+						 " print \"|\" (term ? term : \"\") \"|\" (ip ? ip : \"\") \"|\" substr($0, index($0, time_start));"
+						 "}' >> id.txt"
+						 , usr);
 				system(cmn);
 			}
+			fclose(f);
+			char *f1 = "./aux.txt";
+			char *f2 = "./id.txt";
+			char *f3 = "./salida.txt";
+			combinar(f1, f2, f3);
+
+			// enviamos la informacion al cliente
+			f = fopen("./salida.txt", "r");
+			if (f == NULL)
+			{
+				printf("Error opening file!\n");
+				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				break;
+			}
+			while (fgets(abuf, TAM_BUFFER, f) != NULL)
+			{
+				strcpy(buf, abuf);
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+			}
+
+			printf("Enviado correctamente datos del finger\n");
+
+			strcpy(buf, "\r\n");
+			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
+
 			
+			// fclose(f);
+			remove("./id.txt");
+			remove("./aux.txt");
 		}
 
 		/* Increment the request count. */
@@ -433,8 +474,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		sleep(1);
 		// strcat(buf, "\r\n");
 		/* Send a response back to the client. */
-		if (send(s, "hola\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
-			errout(hostname);
+		// if (send(s, "hola\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+		// 	errout(hostname);
+		remove("./salida.txt");
 	}
 
 	close(s);
@@ -502,4 +544,52 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		printf("%s: sendto error\n", "serverUDP");
 		return;
 	}
+}
+
+void combinar(char *file1, char *file2, char *outputFile)
+{
+	FILE *f1 = fopen(file1, "r");
+	FILE *f2 = fopen(file2, "r");
+	FILE *out = fopen(outputFile, "w");
+
+	if (!f1 || !f2 || !out)
+	{
+		perror("Error opening file");
+		exit(EXIT_FAILURE);
+	}
+
+	char line1[TAM_BUFFER];
+	char line2[TAM_BUFFER];
+
+	while (1)
+	{
+		int hasLine1 = (fgets(line1, sizeof(line1), f1) != NULL);
+		int hasLine2 = (fgets(line2, sizeof(line2), f2) != NULL);
+
+		if (!hasLine1 && !hasLine2)
+		{
+			break; // Exit the loop when both files are exhausted
+		}
+
+		// Remove newline characters, if present
+		if (hasLine1)
+		{
+			line1[strcspn(line1, "\n")] = '\0';
+		}
+		if (hasLine2)
+		{
+			line2[strcspn(line2, "\n")] = '\0';
+		}
+
+		// Write the lines combined into the output file
+		if (hasLine1 && hasLine2)
+		{
+			fprintf(out, "%s %s\r\n", line1, line2);
+		}
+	}
+
+	// Close the files
+	fclose(f1);
+	fclose(f2);
+	fclose(out);
 }

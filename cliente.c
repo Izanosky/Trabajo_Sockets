@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
 	// Variables UDP
 	int retry = RETRIES;
-	struct in_addr reqaddr; 
+	struct in_addr reqaddr;
 	int n_retry;
 	struct sigaction vec;
 	char hostname[MAXHOST];
@@ -68,21 +68,25 @@ int main(int argc, char *argv[])
 	} // si tenemos solo dos argumentos ej: ./cliente TCP
 	else if (argc == 3)
 	{
-		if (strchr(argv[2], '@') == NULL) {
-			//host = "localhost"; // Redirigir a localhost si no contiene '@'
+		if (strchr(argv[2], '@') == NULL)
+		{
+			// host = "localhost"; // Redirigir a localhost si no contiene '@'
 			strcpy(host, "localhost");
 			strcpy(buf, argv[2]);
 			strcat(buf, "\r\n");
-
-		} else {
+		}
+		else
+		{
 			int i = 0;
-			
-			if (argv[2][0] == '@') {
+
+			if (argv[2][0] == '@')
+			{
 				char *token = strtok(argv[2], "@");
 				strcpy(host, token);
 				strcpy(buf, "\r\n");
-
-			} else {
+			}
+			else
+			{
 				char *token = strtok(argv[2], "@");
 				strcpy(buf, token);
 				token = strtok(NULL, "@");
@@ -92,7 +96,6 @@ int main(int argc, char *argv[])
 			printf("Host: %s\n", host);
 			printf("Buffer: %s\n", buf);
 		}
-
 	}
 
 	// -- Creamoh el sokeg
@@ -108,7 +111,7 @@ int main(int argc, char *argv[])
 		printf("Creado correctamente..\n");
 	}
 
-	//comparacion para saber si es UDP O TCP
+	// comparacion para saber si es UDP O TCP
 	if (strcmp(argv[1], "TCP") == 0)
 	{
 		/* clear out address structures */
@@ -122,7 +125,7 @@ int main(int argc, char *argv[])
 		 * user passed in. */
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
-		
+
 		printf("Estamos aqui 1\n");
 		/* esta funci�n es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta*/
 		errcode = getaddrinfo(host, NULL, &hints, &res);
@@ -198,6 +201,9 @@ int main(int argc, char *argv[])
 		int flag = 1;
 		printf("Cerrada la escriturax2\n");
 
+		//limpiamos el buffer
+		memset(buf, 0, TAM_BUFFER);
+
 		while (i = recv(s, buf, TAM_BUFFER, 0))
 		{
 			if (i == -1)
@@ -210,24 +216,36 @@ int main(int argc, char *argv[])
 			int length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 			{
-				//salimos del bucle de recepcion infinita si el mensaje es contiene \r\n
-				flag = 0;
+				printf("Hemos recibido esto de servidor:\n%s\n\n", buf);
 				break;
+				//printf("Hemos recibido esto de servidor:\n%s\n", buf);
+			}
+			else
+			{
+				// si no contiene \r\n seguimos recibiendo
+				printf("Hemos recibido esto de servidor 2 :\n%s\n\n", buf);
 			}
 
-			while (i < TAM_BUFFER || flag == 1)
-			{
-				j = recv(s, &buf[i], TAM_BUFFER - i, 0);
-				if (j == -1)
-				{
-					perror(argv[0]);
-					fprintf(stderr, "%s: error reading result\n", argv[0]);
-					exit(1);
-				}
-				i += j;
-			}
-			/* Print out message indicating the identity of this reply. */
-			printf("Hemos recibido esto de servidor:\n%s\n", buf);
+			// while (i < TAM_BUFFER || flag == 1)
+			// {
+			// 	j = recv(s, &buf[i], TAM_BUFFER - i, 0);
+			// 	if (j == -1)
+			// 	{
+			// 		perror(argv[0]);
+			// 		fprintf(stderr, "%s: error reading result\n", argv[0]);
+			// 		exit(1);
+			// 	}
+			// 	length = strlen(buf);
+			// 	if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
+			// 	{
+			// 		flag = 0;
+			// 	}
+			// 	i += j;
+				
+			// }
+			
+			/* Print out message indicating the identity of this reply. */		
+			
 		}
 
 		/* Print message indicating completion of task. */
@@ -237,6 +255,5 @@ int main(int argc, char *argv[])
 	// AQUI EMPIEZA UDP
 	else
 	{
-
 	}
 }
