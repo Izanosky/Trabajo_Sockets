@@ -18,6 +18,8 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
 
 #define PUERTO 9459
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
@@ -44,10 +46,29 @@ void combinar(char *file1, char *file2, char *outputFile);
 
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
+int semaforo;
+
+//para identificar el numero de solicitud
+int sol = 0;
+
+void wS(int sem_id) {
+    struct sembuf operation = {0, -1, 0};
+    if (semop(sem_id, &operation, 1) == -1) {
+        perror("semop - wait");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void sS(int sem_id) {
+    struct sembuf operation = {0, 1, 0};
+    if (semop(sem_id, &operation, 1) == -1) {
+        perror("semop - signal");
+        exit(EXIT_FAILURE);
+    }
+}
 
 int main(int argc, char *argv[])
 {
-
 	int s_TCP, s_UDP; /* connected socket descriptor */
 	int ls_TCP;		  /* listen socket descriptor */
 
@@ -65,6 +86,16 @@ int main(int argc, char *argv[])
 	char buffer[BUFFERSIZE]; /* buffer for packets to be read into */
 
 	struct sigaction vec;
+
+	semaforo = semget(IPC_PRIVATE, 1, IPC_CREAT | 0666);
+    if (semaforo == -1) {
+        perror("semget");
+        exit(EXIT_FAILURE);
+    }
+    if (semctl(semaforo, 0, SETVAL, 1) == -1) {
+        perror("semctl");
+        exit(EXIT_FAILURE);
+    }
 
 	/* Create the listen socket. */
 	ls_TCP = socket(AF_INET, SOCK_STREAM, 0);
@@ -227,6 +258,7 @@ int main(int argc, char *argv[])
 					 * for that connection.
 					 */
 					s_TCP = accept(ls_TCP, (struct sockaddr *)&clientaddr_in, &addrlen);
+					sol++;
 					if (s_TCP == -1)
 						exit(1);
 					switch (fork())
@@ -311,6 +343,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 	struct linger linger;
 
+	int id = sol;
+
 	status = getnameinfo((struct sockaddr *)&clientaddr_in, sizeof(clientaddr_in),
 						 hostname, MAXHOST, NULL, 0, 0);
 	if (status)
@@ -344,19 +378,17 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 		if (len == 0)
 		{
-			printf("Se ha cerrado la escritura while1\n");
+			//printf("Se ha cerrado la escritura while1\n");
 			break;
 		}
-
-		int length = strlen(buf);
-		if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
+		
+		if(len > 0 && buf[len - 1] == '\n' && buf[len - 2] == '\r')
 		{
 			flag = 0;
-			printf("ta bn");
+			//printf("Se ha cerrado la escritura while1\n");
 		}
 		else
 		{
-			printf("ta mal");
 			flag = 1;
 		}
 
@@ -369,24 +401,37 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			else if (len1 == 0)
 			{
-				printf("Se ha cerrado la escritura while 2\n");
+				//printf("Se ha cerrado la escritura while 2\n");
 				break;
 			}
 
 			len += len1;
 			printf("\n\nlen1: %d\n", len1);
 			// sleep(1);
-			length = strlen(buf);
+			int length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 			{
 				flag = 0;
 			}
 		}
 
-		printf("\n\n\nHola buenas tardes\n\n\n");
+
+		// if (buf[strlen(buf) - 1] == '\n' && buf[strlen(buf) - 2] == '\r')
+		// {
+		// 	flag = 0;
+		// 	printf("ta bn");
+		// }
+		// else
+		// {
+		// 	printf("ta mal");
+		// 	flag = 1;
+		// }
+
+
+		//printf("\n\n\nHola buenas tardes\n\n\n");
 
 		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
-		if (strcmp(buf, "\r\n\0") == 0)
+		if (strcmp(buf, "\r\n") == 0)
 		{
 			printf("si\r\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
@@ -401,11 +446,20 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			char cmn[TAM_BUFFER];
 
+			char f1[50]; snprintf(f1, 50, "./aux%d.txt", id);
+			char f2[50]; snprintf(f2, 50, "./id%d.txt", id);
+			char f3[50]; snprintf(f3, 50, "./salida%d.txt", id);
+
+			//printf("longi: %lu\n", strlen(f1));
+
 			// creamos el comando para obtener la informacion del usuario
-			snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux.txt", usr);
+			snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux%d.txt", usr, id);
 			system(cmn);
 
-			FILE *f = fopen("./aux.txt", "r");
+			// snprintf(cmn, TAM_BUFFER, "touch ./aux%d.txt", id);
+			// system(cmn);
+
+			FILE *f = fopen(f1, "r");
 			if (f == NULL)
 			{
 				printf("Error opening file!\n");
@@ -413,9 +467,17 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				break;
 			}
+
+			//printf("antes de esperar\n");
+			//wS(semaforo);
+			//printf("Esperando\n");
+			//sS(semaforo);
+
 			char abuf[TAM_BUFFER];
 			// por cada usuario, obtenemos su lastlogin
-			system("touch id.txt");
+
+			snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
+			system(cmn);
 			while (fgets(abuf, TAM_BUFFER, f) != NULL)
 			{
 				aux = strtok(abuf, "|");
@@ -428,18 +490,16 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						 " ip = ($3 ~ /^[0-9.]+$/ ? $3 : \"\");"
 						 " time_start = (ip ? $4 : (term ? $3 : $2));"
 						 " print \"|\" (term ? term : \"\") \"|\" (ip ? ip : \"\") \"|\" substr($0, index($0, time_start));"
-						 "}' >> id.txt"
-						 , usr);
+						 "}' >> id%d.txt",
+						 usr, id);
 				system(cmn);
 			}
 			fclose(f);
-			char *f1 = "./aux.txt";
-			char *f2 = "./id.txt";
-			char *f3 = "./salida.txt";
+
 			combinar(f1, f2, f3);
 
 			// enviamos la informacion al cliente
-			f = fopen("./salida.txt", "r");
+			f = fopen(f3, "r");
 			if (f == NULL)
 			{
 				printf("Error opening file!\n");
@@ -454,16 +514,10 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 			}
 
-			printf("Enviado correctamente datos del finger\n");
-
-			strcpy(buf, "\r\n");
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-
-			
-			// fclose(f);
-			remove("./id.txt");
-			remove("./aux.txt");
+			fclose(f);
+			remove(f1);
+			remove(f2);
+			remove(f3);
 		}
 
 		/* Increment the request count. */
@@ -476,7 +530,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		/* Send a response back to the client. */
 		// if (send(s, "hola\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 		// 	errout(hostname);
-		remove("./salida.txt");
+		//remove("./salida.txt");
 	}
 
 	close(s);

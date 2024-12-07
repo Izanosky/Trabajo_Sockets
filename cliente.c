@@ -54,8 +54,11 @@ int main(int argc, char *argv[])
 
 	char buf[TAM_BUFFER];
 
-	//!/////////////////////////////////////////////////////////////////////
+	char login[50] = "", name[100] = "", directory[100] = "", shell[50] = "";
+	char terminal[50] = "N/A", ip[50] = "N/A", fecha[100] = "Never logged in.";
 
+	//!/////////////////////////////////////////////////////////////////////
+	memset(buf, 0, TAM_BUFFER);
 	if (argc < 2 || (strcmp(argv[1], "TCP") != 0 && strcmp(argv[1], "UDP") != 0) || argc > 4)
 	{
 		fprintf(stderr, "Usage:  %s <tipo de protocolo (TCP/UDP)> (opc) <target>\n", argv[0]);
@@ -98,7 +101,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// -- Creamoh el sokeg
+	// -- Creamos el socket
 	s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s == -1)
 	{
@@ -201,7 +204,7 @@ int main(int argc, char *argv[])
 		int flag = 1;
 		printf("Cerrada la escriturax2\n");
 
-		//limpiamos el buffer
+		// limpiamos el buffer
 		memset(buf, 0, TAM_BUFFER);
 
 		while (i = recv(s, buf, TAM_BUFFER, 0))
@@ -216,9 +219,50 @@ int main(int argc, char *argv[])
 			int length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 			{
-				printf("Hemos recibido esto de servidor:\n%s\n\n", buf);
-				break;
-				//printf("Hemos recibido esto de servidor:\n%s\n", buf);
+				char *token = strtok(buf, "|");
+				if (token)
+					strcpy(login, token);
+
+				token = strtok(NULL, "|");
+				if (token)
+					strcpy(name, token);
+
+				token = strtok(NULL, "|");
+				if (token)
+					strcpy(directory, token);
+
+				token = strtok(NULL, "|");
+				if (token)
+					strcpy(shell, token);
+
+				token = strtok(NULL, "|");
+				if (token && strlen(token) > 0)
+					strcpy(terminal, token);
+
+				token = strtok(NULL, "|");
+				if (token && strlen(token) > 0)
+					strcpy(ip, token);
+
+				token = strtok(NULL, "|");
+				if (token && strlen(token) > 0)
+					strcpy(fecha, token);
+
+				// Imprimir en formato tipo `finger`
+				printf("Login: %-20s Name: %s\n", login, name);
+				printf("Directory: %-15s Shell: %s\n", directory, shell);
+				if (strlen(fecha) > 0)
+				{
+					// Si la fecha está disponible, imprimir toda la información
+					printf("On since: %s on %s from %s\n\n\n", fecha, terminal, ip);
+				}
+				else
+				{
+					// Si la fecha está vacía, imprimir el mensaje "Never logged in"
+					printf("Never logged in.\n\n\n");
+				}
+				memset(fecha, 0, TAM_BUFFER);
+				// break;
+				// printf("Hemos recibido esto de servidor:\n%s\n", buf);
 			}
 			else
 			{
@@ -241,11 +285,10 @@ int main(int argc, char *argv[])
 			// 		flag = 0;
 			// 	}
 			// 	i += j;
-				
+
 			// }
-			
-			/* Print out message indicating the identity of this reply. */		
-			
+
+			/* Print out message indicating the identity of this reply. */
 		}
 
 		/* Print message indicating completion of task. */
