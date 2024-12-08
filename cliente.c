@@ -109,10 +109,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: unable to create socket\n", argv[0]);
 		exit(1);
 	}
-	else
-	{
-		printf("Creado correctamente..\n");
-	}
 
 	// comparacion para saber si es UDP O TCP
 	if (strcmp(argv[1], "TCP") == 0)
@@ -129,7 +125,6 @@ int main(int argc, char *argv[])
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
 
-		printf("Estamos aqui 1\n");
 		/* esta funci�n es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta*/
 		errcode = getaddrinfo(host, NULL, &hints, &res);
 		if (errcode != 0)
@@ -146,7 +141,6 @@ int main(int argc, char *argv[])
 		/* puerto del servidor en orden de red*/
 		servaddr_in.sin_port = htons(PUERTO);
 
-		printf("Estamos aqui\n");
 		if (connect(s, (const struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) == -1)
 		{
 			printf("Nos hemos cagado encima\n\n");
@@ -177,24 +171,6 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		// printf("Enviado correctamente cerrando escritura\n");
-		// /*
-		// if (shutdown(s, 1) == -1) // CERRAMOS UNICAMENTE LA ESCRITURA DEL CLIENTE
-		// {
-		// 	perror(argv[0]);
-		// 	fprintf(stderr, "%s: unable to shutdown socket\n", argv[0]);
-		// 	exit(1);
-		// }
-		// */
-		// //sleep(1);
-		// strcpy(buf, "awadecochinillo\r\n");
-		// if (send(s, buf, strlen(buf), 0) > TAM_BUFFER)
-		// {
-		// 	fprintf(stderr, "%s: Connection aborted on error ", argv[0]);
-		// 	fprintf(stderr, "on send number %d\n", i);
-		// 	exit(1);
-		// }
-
 		if (shutdown(s, 1) == -1) // CERRAMOS UNICAMENTE LA ESCRITURA DEL CLIENTE
 		{
 			perror(argv[0]);
@@ -202,10 +178,11 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		int flag = 1;
-		printf("Cerrada la escriturax2\n");
 
 		// limpiamos el buffer
 		memset(buf, 0, TAM_BUFFER);
+		memset(fecha, 0, 100);
+		memset(name, 0, 100);
 
 		while (i = recv(s, buf, TAM_BUFFER, 0))
 		{
@@ -247,20 +224,30 @@ int main(int argc, char *argv[])
 				if (token && strlen(token) > 0)
 					strcpy(fecha, token);
 
-				// Imprimir en formato tipo `finger`
-				printf("Login: %-20s Name: %s\n", login, name);
-				printf("Directory: %-15s Shell: %s\n", directory, shell);
-				if (strlen(fecha) > 0)
+				puts("");
+				if (strlen(name) <= 0)
 				{
-					// Si la fecha está disponible, imprimir toda la información
-					printf("On since: %s on %s from %s\n\n\n", fecha, terminal, ip);
+					printf("\nNo existe el usuario\n");
 				}
 				else
 				{
-					// Si la fecha está vacía, imprimir el mensaje "Never logged in"
-					printf("Never logged in.\n\n\n");
+					// Imprimir en formato tipo `finger`
+					printf("Login: %-20s Name: %s\n", login, name);
+					printf("Directory: %-15s Shell: %s\n", directory, shell);
+					if (strlen(fecha) > 0)
+					{
+						// Si la fecha está disponible, imprimir toda la información
+						printf("On since: %s on %s from %s\n\n\n", fecha, terminal, ip);
+					}
+					else
+					{
+						// Si la fecha está vacía, imprimir el mensaje "Never logged in"
+						printf("Never logged in.\n\n\n");
+					}
 				}
-				memset(fecha, 0, TAM_BUFFER);
+
+				memset(fecha, 0, 100);
+				memset(name, 0, 100);
 				// break;
 				// printf("Hemos recibido esto de servidor:\n%s\n", buf);
 			}

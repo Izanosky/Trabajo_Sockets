@@ -48,23 +48,27 @@ int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
 int semaforo;
 
-//para identificar el numero de solicitud
+// para identificar el numero de solicitud
 int sol = 0;
 
-void wS(int sem_id) {
-    struct sembuf operation = {0, -1, 0};
-    if (semop(sem_id, &operation, 1) == -1) {
-        perror("semop - wait");
-        exit(EXIT_FAILURE);
-    }
+void wS(int sem_id)
+{
+	struct sembuf operation = {0, -1, 0};
+	if (semop(sem_id, &operation, 1) == -1)
+	{
+		perror("semop - wait");
+		exit(EXIT_FAILURE);
+	}
 }
 
-void sS(int sem_id) {
-    struct sembuf operation = {0, 1, 0};
-    if (semop(sem_id, &operation, 1) == -1) {
-        perror("semop - signal");
-        exit(EXIT_FAILURE);
-    }
+void sS(int sem_id)
+{
+	struct sembuf operation = {0, 1, 0};
+	if (semop(sem_id, &operation, 1) == -1)
+	{
+		perror("semop - signal");
+		exit(EXIT_FAILURE);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -88,14 +92,16 @@ int main(int argc, char *argv[])
 	struct sigaction vec;
 
 	semaforo = semget(IPC_PRIVATE, 1, IPC_CREAT | 0666);
-    if (semaforo == -1) {
-        perror("semget");
-        exit(EXIT_FAILURE);
-    }
-    if (semctl(semaforo, 0, SETVAL, 1) == -1) {
-        perror("semctl");
-        exit(EXIT_FAILURE);
-    }
+	if (semaforo == -1)
+	{
+		perror("semget");
+		exit(EXIT_FAILURE);
+	}
+	if (semctl(semaforo, 0, SETVAL, 1) == -1)
+	{
+		perror("semctl");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Create the listen socket. */
 	ls_TCP = socket(AF_INET, SOCK_STREAM, 0);
@@ -376,16 +382,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			errout(hostname);
 		}
 
-		if (len == 0)
-		{
-			//printf("Se ha cerrado la escritura while1\n");
-			break;
-		}
-		
-		if(len > 0 && buf[len - 1] == '\n' && buf[len - 2] == '\r')
+		if (len > 2 && buf[len - 1] == '\n' && buf[len - 2] == '\r')
 		{
 			flag = 0;
-			//printf("Se ha cerrado la escritura while1\n");
 		}
 		else
 		{
@@ -399,14 +398,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			if (len1 == -1)
 				errout(hostname);
 
-			else if (len1 == 0)
-			{
-				//printf("Se ha cerrado la escritura while 2\n");
-				break;
-			}
-
 			len += len1;
-			printf("\n\nlen1: %d\n", len1);
 			// sleep(1);
 			int length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
@@ -414,7 +406,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				flag = 0;
 			}
 		}
-
 
 		// if (buf[strlen(buf) - 1] == '\n' && buf[strlen(buf) - 2] == '\r')
 		// {
@@ -427,39 +418,25 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		// 	flag = 1;
 		// }
 
+		char cmn[TAM_BUFFER];
+		char f1[50];
+		char f2[50];
+		char f3[50];
+		FILE *f;
+		char abuf[TAM_BUFFER];
+		char usr[50];
+		char *aux;
 
-		//printf("\n\n\nHola buenas tardes\n\n\n");
+		// printf("\n\n\nHola buenas tardes\n\n\n");
 
 		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
 		if (strcmp(buf, "\r\n") == 0)
 		{
-			printf("si\r\n");
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-		}
-		else // y este para cuando ponemos un usuario en concreto
-		{
-			// dividimos el buf para obtener solo el usuario
-			char *aux = strtok(buf, "\r\n");
-			char usr[50];
-			strcpy(usr, aux);
-
-			char cmn[TAM_BUFFER];
-
-			char f1[50]; snprintf(f1, 50, "./aux%d.txt", id);
-			char f2[50]; snprintf(f2, 50, "./id%d.txt", id);
-			char f3[50]; snprintf(f3, 50, "./salida%d.txt", id);
-
-			//printf("longi: %lu\n", strlen(f1));
-
-			// creamos el comando para obtener la informacion del usuario
-			snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux%d.txt", usr, id);
+			snprintf(cmn, TAM_BUFFER, "who | awk '{print $1}' > id%d.txt", id);
+			snprintf(f1, 50, "./id%d.txt", id);
 			system(cmn);
 
-			// snprintf(cmn, TAM_BUFFER, "touch ./aux%d.txt", id);
-			// system(cmn);
-
-			FILE *f = fopen(f1, "r");
+			f = fopen(f1, "r");
 			if (f == NULL)
 			{
 				printf("Error opening file!\n");
@@ -468,12 +445,105 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				break;
 			}
 
-			//printf("antes de esperar\n");
-			//wS(semaforo);
-			//printf("Esperando\n");
-			//sS(semaforo);
+			snprintf(f2, 50, "touch ./aux%d.txt", id);
+			system(f2);
 
-			char abuf[TAM_BUFFER];
+			while (fgets(usr, 50, f) != NULL)
+			{
+				//hacemos esto para eliminar el \n del final ya que si no, nunca encuentra usuarios
+				if ((aux = strchr(usr, '\n')) != NULL)
+					*aux = '\0';
+				snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' >> ./aux%d.txt", usr, id);
+				system(cmn);
+			}
+
+			
+
+			fclose(f);
+			remove(f1);
+
+			snprintf(f1, 50, "./aux%d.txt", id);
+			snprintf(f2, 50, "./id%d.txt", id);
+			snprintf(f3, 50, "./salida%d.txt", id);
+			f = fopen(f1, "r");
+			if (f == NULL)
+			{
+				printf("Error opening file!\n");
+				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				break;
+			}
+
+			snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
+			system(cmn);
+			while (fgets(abuf, TAM_BUFFER, f) != NULL)
+			{
+				aux = strtok(abuf, "|");
+				strcpy(usr, aux);
+
+				snprintf(cmn, TAM_BUFFER,
+						 "lastlog -u %s | tail -n +2 | awk '"
+						 "{"
+						 " term = ($2 ~ /^pts\\/|tty$/ ? $2 : \"\");"
+						 " ip = ($3 ~ /^[0-9.]+$/ ? $3 : \"\");"
+						 " time_start = (ip ? $4 : (term ? $3 : $2));"
+						 " print \"|\" (term ? term : \"\") \"|\" (ip ? ip : \"\") \"|\" substr($0, index($0, time_start));"
+						 "}' >> id%d.txt",
+						 usr, id);
+				system(cmn);
+			}
+			fclose(f);
+
+			combinar(f1, f2, f3);
+
+			// enviamos la informacion al cliente
+			f = fopen(f3, "r");
+			if (f == NULL)
+			{
+				printf("Error opening file!\n");
+				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				break;
+			}
+			while (fgets(abuf, TAM_BUFFER, f) != NULL)
+			{
+				strcpy(buf, abuf);
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+			}
+
+			fclose(f);
+			remove(f1);
+			remove(f2);
+			remove(f3);
+		}
+		else // y este para cuando ponemos un usuario en concreto
+		{
+			// dividimos el buf para obtener solo el usuario
+			aux = strtok(buf, "\r\n");
+			strcpy(usr, aux);
+
+			snprintf(f1, 50, "./aux%d.txt", id);
+			snprintf(f2, 50, "./id%d.txt", id);
+			snprintf(f3, 50, "./salida%d.txt", id);
+
+			// printf("longi: %lu\n", strlen(f1));
+
+			// creamos el comando para obtener la informacion del usuario
+			snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux%d.txt", usr, id);
+			system(cmn);
+
+			// snprintf(cmn, TAM_BUFFER, "touch ./aux%d.txt", id);
+			// system(cmn);
+
+			f = fopen(f1, "r");
+			if (f == NULL)
+			{
+				printf("Error opening file!\n");
+				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				break;
+			}
 			// por cada usuario, obtenemos su lastlogin
 
 			snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
@@ -530,7 +600,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		/* Send a response back to the client. */
 		// if (send(s, "hola\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 		// 	errout(hostname);
-		//remove("./salida.txt");
+		// remove("./salida.txt");
 	}
 
 	close(s);
