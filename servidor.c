@@ -425,8 +425,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 		}
 
-		printf("superamos while\n");
-
 		// if (buf[strlen(buf) - 1] == '\n' && buf[strlen(buf) - 2] == '\r')
 		// {
 		// 	flag = 0;
@@ -460,7 +458,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		else{
 			strncpy(nombre, usr, len);
 		}
-		printf("usr: %saa\n", nombre);
 
 		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
 		if (strcmp(usr, "\r\n") == 0)
@@ -549,7 +546,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		}
 		else // y este para cuando ponemos un usuario en concreto
 		{
-			printf("usuario pillado\n");
 			// dividimos el buf para obtener solo el usuario
 			aux = strtok(usr, "\r\n");
 			strcpy(abuf, aux);
