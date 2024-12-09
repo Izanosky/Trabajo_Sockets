@@ -145,8 +145,6 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		printf("Cliente: Connected to %s on port %u\n", host, ntohs(servaddr_in.sin_port));
-
 		addrlen = sizeof(struct sockaddr_in);
 		if (getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen) == -1)
 		{
@@ -169,7 +167,6 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		printf("Cliente: Sent %s to server\n", buf);
 
 		if (shutdown(s, 1) == -1) // CERRAMOS UNICAMENTE LA ESCRITURA DEL CLIENTE
 		{
@@ -251,7 +248,6 @@ int main(int argc, char *argv[])
 					strcpy(fecha, token);
 
 				puts("");
-				printf("buf %s aa\n", buf);
 				if (strlen(buf) == 2)
 				{
 					printf("\nNo existe el usuario\n");

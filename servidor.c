@@ -340,7 +340,6 @@ int main(int argc, char *argv[])
  */
 void serverTCP(int s, struct sockaddr_in clientaddr_in)
 {
-	printf("conexion hecha\n");
 	int reqcnt = 0;
 	char buf[TAM_BUFFER];
 	char hostname[MAXHOST];
@@ -387,7 +386,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		// Verificar si el búfer recibido está vacío
 		if (len == 0)
 		{
-			printf("No se recibió ningún dato.\n");
 			break; // Salir del bucle si no hay datos
 		}
 
@@ -424,17 +422,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				flag = 0;
 			}
 		}
-
-		// if (buf[strlen(buf) - 1] == '\n' && buf[strlen(buf) - 2] == '\r')
-		// {
-		// 	flag = 0;
-		// 	printf("ta bn");
-		// }
-		// else
-		// {
-		// 	printf("ta mal");
-		// 	flag = 1;
-		// }
 
 		char cmn[TAM_BUFFER];
 		char f1[50];
@@ -660,11 +647,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			break;
 		}
 
-		fprintf(f, "-- COMUNICACION REALIZADA --\n\t Protocolo: %s hostname %s, ip %s, puerto efimero %u , %s , %s , %s\n",
-				protocolName, hostname, inet_ntoa(clientaddr_in.sin_addr), ntohs(clientaddr_in.sin_port), f1, f2, f3);
-		fprintf(f, "-- ORDEN RECIBIDA --\n\t hostname %s, ip %s, protocolo %s, puerto %u, orden recibida %s\n",
+		fprintf(f, "-- COMUNICACION REALIZADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u\n",
+				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
+		fprintf(f, "-- ORDEN RECIBIDA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - ORDEN RECIBIDA: %s\n",
 				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port), nombre);
-		fprintf(f, "-- RESPUESTA ENVIADA --\n\t hostname %s, ip %s, protocolo %s, puerto %u, respuesta enviada: \n",
+		fprintf(f, "-- RESPUESTA ENVIADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - RESPUESTA ENVIADA: \n",
 				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 
 		while (fgets(abuf, TAM_BUFFER, fl2) != NULL)
@@ -672,8 +659,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			fprintf(f, "\t\t\t%s", abuf);
 		}
 
-		fprintf(f, "-- COMUNICACION REALIZADA --\n\t Protocolo: %s hostname %s, ip %s, puerto efimero %u\n",
-				protocolName, hostname, inet_ntoa(clientaddr_in.sin_addr), ntohs(clientaddr_in.sin_port));
+		fprintf(f, "-- COMUNICACION FINALIZADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u\n",
+				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 		fprintf(f, "------------------------------------------------------------------------------------------------------------------------------------\n");
 
 		fclose(fl2);
@@ -687,11 +674,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * request that a real server might do.
 		 */
 		sleep(1);
-		// strcat(buf, "\r\n");
-		/* Send a response back to the client. */
-		// if (send(s, "hola\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
-		// 	errout(hostname);
-		// remove("./salida.txt");
 	}
 
 	close(s);
