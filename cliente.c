@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 	struct sockaddr_in myaddr_in;	/* for local socket address */
 	struct sockaddr_in servaddr_in; /* for server socket address */
 	struct addrinfo hints, *res;
+	FILE *f;
 	long timevar; /* contains time returned by time() */
 
 	// Variables TCP
@@ -156,8 +157,8 @@ int main(int argc, char *argv[])
 		/* Print out a startup message for the user. */
 		time(&timevar);
 
-		printf("Connected to %s on port %u at %s",
-			   host, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
+		// printf("Connected to %s on port %u at %s",
+		// 	   host, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
 		// enviamos la cadena con un tamanno de buffer igual su longitud
 		if (send(s, buf, strlen(buf), 0) > TAM_BUFFER)
@@ -180,6 +181,21 @@ int main(int argc, char *argv[])
 		memset(buf, 0, TAM_BUFFER);
 		memset(fecha, 0, 100);
 		memset(name, 0, 100);
+
+		//ponemos el puerto efimero del cliente
+		// char *token = snprintf(token, 50, "%s.txt", );
+
+		//mostramos por pantalla el puerto efimero del cliente
+		// printf("Puerto efimero del cliente: %d\n", ntohs(myaddr_in.sin_port));
+		char token[50]; 
+		snprintf(token, sizeof(token), "%d.txt", ntohs(myaddr_in.sin_port));
+		f = fopen(token, "w");
+		if (f == NULL)
+		{
+			printf("Error opening file!\n");
+			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+				exit(1);
+		}
 
 		while (i = recv(s, buf, TAM_BUFFER, 0))
 		{
@@ -219,6 +235,8 @@ int main(int argc, char *argv[])
 			int length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 			{
+				fprintf(f, "%s\n", buf);
+								
 				char *token = strtok(buf, "|");
 				if (token)
 					strcpy(login, token);
@@ -278,9 +296,11 @@ int main(int argc, char *argv[])
 			/* Print out message indicating the identity of this reply. */
 		}
 
+		fclose(f);
+
 		/* Print message indicating completion of task. */
 		time(&timevar);
-		printf("Cliente: All done at %s", (char *)ctime(&timevar));
+		// printf("Cliente: All done at %s", (char *)ctime(&timevar));
 	}
 	// AQUI EMPIEZA UDP
 	else

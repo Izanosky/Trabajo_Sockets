@@ -362,8 +362,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 	time(&timevar);
 
-	printf("Startup from %s port %u at %s",
-		   hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
+	// printf("Startup from %s port %u at %s",
+	// 	   hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
 
 	linger.l_onoff = 1;
 	linger.l_linger = 1;
@@ -456,7 +456,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f1, "r");
 			if (f == NULL)
 			{
-				printf("Error opening file!\n");
+				//printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -483,7 +483,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f1, "r");
 			if (f == NULL)
 			{
-				printf("Error opening file!\n");
+				//printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -515,7 +515,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f3, "r");
 			if (f == NULL)
 			{
-				printf("Error opening file!\n");
+				//printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -554,7 +554,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f1, "r");
 			if (f == NULL)
 			{
-				printf("Error opening file!\n");
+				//printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -587,7 +587,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f3, "r");
 			if (f == NULL)
 			{
-				printf("Error opening file!\n");
+				//printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -610,7 +610,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		f = fopen("peticiones.log", "a");
 		if (f == NULL)
 		{
-			printf("Error opening file!\n");
+			//printf("Error opening file!\n");
 			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 			break;
@@ -641,7 +641,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		FILE *fl2 = fopen(f3, "r");
 		if (fl2 == NULL)
 		{
-			printf("Error opening file!\n");
+			//printf("Error opening file!\n");
 			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 			break;
@@ -680,8 +680,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 	time(&timevar);
 
-	printf("Servidor: Completed %s port %u, %d requests, at %s\n",
-		   hostname, ntohs(clientaddr_in.sin_port), reqcnt, (char *)ctime(&timevar));
+	// printf("Servidor: Completed %s port %u, %d requests, at %s\n",
+	// 	   hostname, ntohs(clientaddr_in.sin_port), reqcnt, (char *)ctime(&timevar));
 }
 
 /*
