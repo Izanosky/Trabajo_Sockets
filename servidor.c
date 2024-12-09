@@ -340,6 +340,7 @@ int main(int argc, char *argv[])
  */
 void serverTCP(int s, struct sockaddr_in clientaddr_in)
 {
+	printf("conexion hecha\n");
 	int reqcnt = 0;
 	char buf[TAM_BUFFER];
 	char hostname[MAXHOST];
@@ -383,7 +384,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			errout(hostname);
 		}
 
-		if (len > 2 && buf[len - 1] == '\n' && buf[len - 2] == '\r')
+		// Verificar si el búfer recibido está vacío
+		if (len == 0)
+		{
+			printf("No se recibió ningún dato.\n");
+			break; // Salir del bucle si no hay datos
+		}
+
+		if (len > 0 && strncmp(&buf[len - 2], "\r\n", 2) == 0)
 		{
 			flag = 0;
 		}
@@ -392,21 +400,32 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			flag = 1;
 		}
 
+
+
 		while (flag != 0 && len < TAM_BUFFER)
 		{
 			len1 = recv(s, &buf[len], TAM_BUFFER - len, 0);
 
 			if (len1 == -1)
+			{
 				errout(hostname);
+			}
+			if (len1 == 0)
+			{
+				break; // Salir del bucle si no hay datos
+			}
 
 			len += len1;
-			// sleep(1);
+
+			// Comprobación de los caracteres de fin de línea
 			int length = strlen(buf);
-			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
+			if (length > 0 && strncmp(&buf[len - 2], "\r\n", 2) == 0)
 			{
 				flag = 0;
 			}
 		}
+
+		printf("superamos while\n");
 
 		// if (buf[strlen(buf) - 1] == '\n' && buf[strlen(buf) - 2] == '\r')
 		// {
@@ -426,12 +445,25 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		FILE *f;
 		char abuf[TAM_BUFFER];
 		char usr[50];
+		char nombre[50];
 		char *aux;
 
-		// printf("\n\n\nHola buenas tardes\n\n\n");
+		memset(usr, 0, sizeof(usr));
+		memset(nombre, 0, sizeof(usr));
+		memset(abuf, 0, sizeof(abuf));
+
+		strncpy(usr, buf, len);
+		// si el usuario solo contiene \r\n escribe en nombre "all"
+		// si no, escribe el usuario en nombre
+		if(strcmp(usr, "\r\n") == 0)
+			strcpy(nombre, "all");
+		else{
+			strncpy(nombre, usr, len);
+		}
+		printf("usr: %saa\n", nombre);
 
 		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
-		if (strcmp(buf, "\r\n") == 0)
+		if (strcmp(usr, "\r\n") == 0)
 		{
 			snprintf(cmn, TAM_BUFFER, "who | awk '{print $1}' > id%d.txt", id);
 			snprintf(f1, 50, "./id%d.txt", id);
@@ -448,7 +480,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			snprintf(f2, 50, "touch ./aux%d.txt", id);
 			system(f2);
-
+		
 			while (fgets(usr, 50, f) != NULL)
 			{
 				// hacemos esto para eliminar el \n del final ya que si no, nunca encuentra usuarios
@@ -517,9 +549,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		}
 		else // y este para cuando ponemos un usuario en concreto
 		{
+			printf("usuario pillado\n");
 			// dividimos el buf para obtener solo el usuario
-			aux = strtok(buf, "\r\n");
-			strcpy(usr, aux);
+			aux = strtok(usr, "\r\n");
+			strcpy(abuf, aux);
+			strcpy(usr, abuf);
 
 			snprintf(f1, 50, "./aux%d.txt", id);
 			snprintf(f2, 50, "./id%d.txt", id);
@@ -583,13 +617,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 
 			fclose(f);
-			//remove(f1);
-			//remove(f2);
+			remove(f1);
+			remove(f2);
 		}
 
 		// logica del fichero
 		wS(semaforo);
-		printf("Semaforo bloqueado\n");
 
 		f = fopen("peticiones.log", "a");
 		if (f == NULL)
@@ -634,7 +667,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		fprintf(f, "-- COMUNICACION REALIZADA --\n\t Protocolo: %s hostname %s, ip %s, puerto efimero %u , %s , %s , %s\n",
 				protocolName, hostname, inet_ntoa(clientaddr_in.sin_addr), ntohs(clientaddr_in.sin_port), f1, f2, f3);
 		fprintf(f, "-- ORDEN RECIBIDA --\n\t hostname %s, ip %s, protocolo %s, puerto %u, orden recibida %s\n",
-				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port), usr);
+				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port), nombre);
 		fprintf(f, "-- RESPUESTA ENVIADA --\n\t hostname %s, ip %s, protocolo %s, puerto %u, respuesta enviada: \n",
 				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 
@@ -651,8 +684,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		fclose(f);
 
 		sS(semaforo);
-		printf("Semaforo desbloqueado\n");
-		//remove(f3);
+		remove(f3);
 		/* Increment the request count. */
 		reqcnt++;
 		/* This sleep simulates the processing of the
@@ -780,3 +812,4 @@ void combinar(char *file1, char *file2, char *outputFile)
 	fclose(f2);
 	fclose(out);
 }
+// tenemos que enviar mensaje cuiando no existe y tenemos que cambiar el nombre a all si es finer -l

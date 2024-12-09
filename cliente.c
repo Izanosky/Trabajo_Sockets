@@ -145,6 +145,8 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
+		printf("Cliente: Connected to %s on port %u\n", host, ntohs(servaddr_in.sin_port));
+
 		addrlen = sizeof(struct sockaddr_in);
 		if (getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen) == -1)
 		{
@@ -166,6 +168,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "on send number %d\n", i);
 			exit(1);
 		}
+
+		printf("Cliente: Sent %s to server\n", buf);
 
 		if (shutdown(s, 1) == -1) // CERRAMOS UNICAMENTE LA ESCRITURA DEL CLIENTE
 		{
