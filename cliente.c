@@ -95,9 +95,6 @@ int main(int argc, char *argv[])
 				token = strtok(NULL, "@");
 				strcpy(host, token);
 			}
-
-			printf("Host: %s\n", host);
-			printf("Buffer: %s\n", buf);
 		}
 	}
 
@@ -143,7 +140,6 @@ int main(int argc, char *argv[])
 
 		if (connect(s, (const struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) == -1)
 		{
-			printf("Nos hemos cagado encima\n\n");
 			perror(argv[0]);
 			fprintf(stderr, "%s: unable to connect to remote\n", argv[0]);
 			exit(1);
@@ -193,6 +189,32 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 
+			if (i > 2 && buf[strlen(buf) - 1] == '\n' && buf[strlen(buf) - 2] == '\r')
+			{
+				flag = 0;
+			}
+			else
+			{
+				flag = 1;
+			}
+
+			while (flag != 0 && i < TAM_BUFFER)
+			{
+				j = recv(s, &buf[i], TAM_BUFFER - i, 0);
+
+				if (j == -1)
+					printf("Error on client\n");
+				exit(1);
+
+				i += j;
+				// sleep(1);
+				int length = strlen(buf);
+				if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
+				{
+					flag = 0;
+				}
+			}
+
 			int length = strlen(buf);
 			if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 			{
@@ -225,7 +247,8 @@ int main(int argc, char *argv[])
 					strcpy(fecha, token);
 
 				puts("");
-				if (strlen(name) <= 0)
+				printf("buf %s aa\n", buf);
+				if (strlen(buf) == 2)
 				{
 					printf("\nNo existe el usuario\n");
 				}
@@ -251,29 +274,6 @@ int main(int argc, char *argv[])
 				// break;
 				// printf("Hemos recibido esto de servidor:\n%s\n", buf);
 			}
-			else
-			{
-				// si no contiene \r\n seguimos recibiendo
-				printf("Hemos recibido esto de servidor 2 :\n%s\n\n", buf);
-			}
-
-			// while (i < TAM_BUFFER || flag == 1)
-			// {
-			// 	j = recv(s, &buf[i], TAM_BUFFER - i, 0);
-			// 	if (j == -1)
-			// 	{
-			// 		perror(argv[0]);
-			// 		fprintf(stderr, "%s: error reading result\n", argv[0]);
-			// 		exit(1);
-			// 	}
-			// 	length = strlen(buf);
-			// 	if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
-			// 	{
-			// 		flag = 0;
-			// 	}
-			// 	i += j;
-
-			// }
 
 			/* Print out message indicating the identity of this reply. */
 		}

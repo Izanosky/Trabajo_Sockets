@@ -43,6 +43,7 @@ void serverTCP(int s, struct sockaddr_in peeraddr_in);
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in);
 void errout(char *); /* declare error out routine */
 void combinar(char *file1, char *file2, char *outputFile);
+void escribirFichero(char *file);
 
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
@@ -450,14 +451,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			while (fgets(usr, 50, f) != NULL)
 			{
-				//hacemos esto para eliminar el \n del final ya que si no, nunca encuentra usuarios
+				// hacemos esto para eliminar el \n del final ya que si no, nunca encuentra usuarios
 				if ((aux = strchr(usr, '\n')) != NULL)
 					*aux = '\0';
 				snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' >> ./aux%d.txt", usr, id);
 				system(cmn);
 			}
-
-			
 
 			fclose(f);
 			remove(f1);
@@ -515,7 +514,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			fclose(f);
 			remove(f1);
 			remove(f2);
-			remove(f3);
 		}
 		else // y este para cuando ponemos un usuario en concreto
 		{
@@ -585,11 +583,76 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 
 			fclose(f);
-			remove(f1);
-			remove(f2);
-			remove(f3);
+			//remove(f1);
+			//remove(f2);
 		}
 
+		// logica del fichero
+		wS(semaforo);
+		printf("Semaforo bloqueado\n");
+
+		f = fopen("peticiones.log", "a");
+		if (f == NULL)
+		{
+			printf("Error opening file!\n");
+			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
+			break;
+		}
+
+		int protocol;
+		socklen_t optlen = sizeof(protocol);
+		if (getsockopt(s, SOL_SOCKET, SO_PROTOCOL, &protocol, &optlen) == -1)
+		{
+			perror("getsockopt");
+			protocol = -1; // Indica que no se pudo determinar
+		}
+		const char *protocolName;
+		if (protocol == IPPROTO_TCP)
+		{
+			protocolName = "TCP";
+		}
+		else if (protocol == IPPROTO_UDP)
+		{
+			protocolName = "UDP";
+		}
+		else
+		{
+			protocolName = "Desconocido";
+		}
+
+		// abrimos el fichero con la informacion
+		FILE *fl2 = fopen(f3, "r");
+		if (fl2 == NULL)
+		{
+			printf("Error opening file!\n");
+			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
+			break;
+		}
+
+		fprintf(f, "-- COMUNICACION REALIZADA --\n\t Protocolo: %s hostname %s, ip %s, puerto efimero %u , %s , %s , %s\n",
+				protocolName, hostname, inet_ntoa(clientaddr_in.sin_addr), ntohs(clientaddr_in.sin_port), f1, f2, f3);
+		fprintf(f, "-- ORDEN RECIBIDA --\n\t hostname %s, ip %s, protocolo %s, puerto %u, orden recibida %s\n",
+				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port), usr);
+		fprintf(f, "-- RESPUESTA ENVIADA --\n\t hostname %s, ip %s, protocolo %s, puerto %u, respuesta enviada: \n",
+				hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
+
+		while (fgets(abuf, TAM_BUFFER, fl2) != NULL)
+		{
+			fprintf(f, "\t\t\t%s", abuf);
+		}
+
+		fprintf(f, "-- COMUNICACION REALIZADA --\n\t Protocolo: %s hostname %s, ip %s, puerto efimero %u\n",
+				protocolName, hostname, inet_ntoa(clientaddr_in.sin_addr), ntohs(clientaddr_in.sin_port));
+		fprintf(f, "------------------------------------------------------------------------------------------------------------------------------------\n");
+
+		fclose(fl2);
+		fclose(f);
+
+		sS(semaforo);
+		printf("Semaforo desbloqueado\n");
+		//remove(f3);
 		/* Increment the request count. */
 		reqcnt++;
 		/* This sleep simulates the processing of the
