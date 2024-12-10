@@ -362,9 +362,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 	time(&timevar);
 
-	// printf("Startup from %s port %u at %s",
-	// 	   hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
-
 	linger.l_onoff = 1;
 	linger.l_linger = 1;
 	if (setsockopt(s, SOL_SOCKET, SO_LINGER, &linger,
@@ -398,8 +395,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			flag = 1;
 		}
 
-
-
 		while (flag != 0 && len < TAM_BUFFER)
 		{
 			len1 = recv(s, &buf[len], TAM_BUFFER - len, 0);
@@ -422,6 +417,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				flag = 0;
 			}
 		}
+		buf[len] = '\0';
 
 		char cmn[TAM_BUFFER];
 		char f1[50];
@@ -440,10 +436,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		strncpy(usr, buf, len);
 		// si el usuario solo contiene \r\n escribe en nombre "all"
 		// si no, escribe el usuario en nombre
-		if(strcmp(usr, "\r\n") == 0)
-			strcpy(nombre, "all");
-		else{
+		if (strcmp(usr, "\r\n") == 0)
+		{
+			strncpy(nombre, "all", 3);
+			strcat(nombre, "\0");
+		}
+		else
+		{
 			strncpy(nombre, usr, len);
+			strcat(nombre, "\0");
 		}
 
 		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
@@ -456,7 +457,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f1, "r");
 			if (f == NULL)
 			{
-				//printf("Error opening file!\n");
+				// printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -464,7 +465,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			snprintf(f2, 50, "touch ./aux%d.txt", id);
 			system(f2);
-		
+
 			while (fgets(usr, 50, f) != NULL)
 			{
 				// hacemos esto para eliminar el \n del final ya que si no, nunca encuentra usuarios
@@ -483,7 +484,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f1, "r");
 			if (f == NULL)
 			{
-				//printf("Error opening file!\n");
+				// printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -515,13 +516,18 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f3, "r");
 			if (f == NULL)
 			{
-				//printf("Error opening file!\n");
+				// printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
 			}
+			int info = 0;
 			while (fgets(abuf, TAM_BUFFER, f) != NULL)
 			{
+				if (strlen(abuf) == 1 && info == 0)
+				{
+					strcpy(abuf, "No existe el usuario\r\n");
+				}
 				strcpy(buf, abuf);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
@@ -550,11 +556,10 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			// snprintf(cmn, TAM_BUFFER, "touch ./aux%d.txt", id);
 			// system(cmn);
-
 			f = fopen(f1, "r");
 			if (f == NULL)
 			{
-				//printf("Error opening file!\n");
+				// printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
@@ -587,18 +592,27 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			f = fopen(f3, "r");
 			if (f == NULL)
 			{
-				//printf("Error opening file!\n");
+				// printf("Error opening file!\n");
 				if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				break;
 			}
+			int info = 0;
+			memset(abuf, 0, sizeof(abuf));
 			while (fgets(abuf, TAM_BUFFER, f) != NULL)
 			{
 				strcpy(buf, abuf);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
+				info++;
+				memset(abuf, 0, sizeof(abuf));
 			}
-
+			if (info == 0)
+			{
+				strcpy(buf, "No existe el usuario\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+			}
 			fclose(f);
 			remove(f1);
 			remove(f2);
@@ -610,7 +624,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		f = fopen("peticiones.log", "a");
 		if (f == NULL)
 		{
-			//printf("Error opening file!\n");
+			// printf("Error opening file!\n");
 			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 			break;
@@ -641,7 +655,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		FILE *fl2 = fopen(f3, "r");
 		if (fl2 == NULL)
 		{
-			//printf("Error opening file!\n");
+			// printf("Error opening file!\n");
 			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 			break;
@@ -705,13 +719,26 @@ void errout(char *hostname)
  */
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 {
+	int id = sol;
 	struct in_addr reqaddr; /* for requested host's address */
 	struct hostent *hp;		/* pointer to host info for requested host */
 	int nc, errcode;
 
+	char hostname[MAXHOST];
+
 	struct addrinfo hints, *res;
 
 	int addrlen;
+
+	char cmn[TAM_BUFFER];
+	char f1[50];
+	char f2[50];
+	char f3[50];
+	FILE *f;
+	char abuf[TAM_BUFFER];
+	char usr[50];
+	char nombre[50];
+	char *aux;
 
 	addrlen = sizeof(struct sockaddr_in);
 
@@ -719,7 +746,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	hints.ai_family = AF_INET;
 	/* Treat the message as a string containing a hostname. */
 	/* Esta funci�n es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta. */
-	errcode = getaddrinfo(buffer, NULL, &hints, &res);
+	errcode = getaddrinfo(buffer, hostname, &hints, &res);
 	if (errcode != 0)
 	{
 		/* Name was not found.  Return a
@@ -731,16 +758,321 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		/* Copy address of host into the return buffer. */
 		reqaddr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
 	}
-	freeaddrinfo(res);
+	// ---
+	// ---
 
-	nc = sendto(s, &reqaddr, sizeof(struct in_addr),
-				0, (struct sockaddr *)&clientaddr_in, addrlen);
-	if (nc == -1)
+	memset(usr, 0, sizeof(usr));
+	memset(nombre, 0, sizeof(usr));
+	memset(abuf, 0, sizeof(abuf));
+
+	strncpy(usr, buffer, strlen(buffer));
+	printf("servidor usr: %s\n", usr);
+	// si el usuario solo contiene \r\n escribe en nombre "all"
+	// si no, escribe el usuario en nombre
+	if (strcmp(usr, "\r\n") == 0)
+	{
+
+		strcpy(nombre, "all");
+		strcat(nombre, "\0");
+	}
+	else
+	{
+		strncpy(nombre, usr, strlen(usr));
+		strcat(nombre, "\0");
+	}
+
+	printf("servidor : aqui\n");
+
+	// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
+	if (strcmp(usr, "\r\n") == 0)
+	{
+		snprintf(cmn, TAM_BUFFER, "who | awk '{print $1}' > id%d.txt", id);
+		snprintf(f1, 50, "./id%d.txt", id);
+		system(cmn);
+
+		f = fopen(f1, "r");
+		if (f == NULL)
+		{
+			// printf("Error opening file!\n");
+			nc = sendto(s, "ms", TAM_BUFFER,
+						0, (struct sockaddr *)&clientaddr_in, addrlen);
+			if (nc == -1)
+			{
+				perror("serverUDP");
+				printf("%s: sendto error\n", "serverUDP");
+				return;
+			}
+			return;
+		}
+
+		snprintf(f2, 50, "touch ./aux%d.txt", id);
+		system(f2);
+
+		printf("servidor : aqui2\n");
+
+		while (fgets(usr, 50, f) != NULL)
+		{
+			// hacemos esto para eliminar el \n del final ya que si no, nunca encuentra usuarios
+			if ((aux = strchr(usr, '\n')) != NULL)
+				*aux = '\0';
+			snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' >> ./aux%d.txt", usr, id);
+			system(cmn);
+		}
+
+		fclose(f);
+		remove(f1);
+
+		snprintf(f1, 50, "./aux%d.txt", id);
+		snprintf(f2, 50, "./id%d.txt", id);
+		snprintf(f3, 50, "./salida%d.txt", id);
+		f = fopen(f1, "r");
+		if (f == NULL)
+		{
+			// printf("Error opening file!\n");
+			nc = sendto(s, "ms", TAM_BUFFER,
+						0, (struct sockaddr *)&clientaddr_in, addrlen);
+			if (nc == -1)
+			{
+				perror("serverUDP");
+				printf("%s: sendto error\n", "serverUDP");
+				return;
+			}
+			return;
+		}
+
+		printf("servidor : aqui3\n");
+
+		snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
+		system(cmn);
+		while (fgets(abuf, TAM_BUFFER, f) != NULL)
+		{
+			aux = strtok(abuf, "|");
+			strcpy(usr, aux);
+
+			snprintf(cmn, TAM_BUFFER,
+					 "lastlog -u %s | tail -n +2 | awk '"
+					 "{"
+					 " term = ($2 ~ /^pts\\/|tty$/ ? $2 : \"\");"
+					 " ip = ($3 ~ /^[0-9.]+$/ ? $3 : \"\");"
+					 " time_start = (ip ? $4 : (term ? $3 : $2));"
+					 " print \"|\" (term ? term : \"\") \"|\" (ip ? ip : \"\") \"|\" substr($0, index($0, time_start));"
+					 "}' >> id%d.txt",
+					 usr, id);
+			system(cmn);
+		}
+		fclose(f);
+
+		combinar(f1, f2, f3);
+
+		// enviamos la informacion al cliente
+		f = fopen(f3, "r");
+		if (f == NULL)
+		{
+			// printf("Error opening file!\n");
+			nc = sendto(s, "ms", TAM_BUFFER,
+						0, (struct sockaddr *)&clientaddr_in, addrlen);
+			if (nc == -1)
+			{
+				perror("serverUDP");
+				printf("%s: sendto error\n", "serverUDP");
+				return;
+			}
+			return;
+		}
+
+		printf("servidor : aqui4\n");
+
+		int info = 0;
+		while (fgets(abuf, TAM_BUFFER, f) != NULL)
+		{
+			if (strlen(abuf) == 1 && info == 0)
+			{
+				strcpy(abuf, "No existe el usuario\r\n");
+			}
+			strcpy(buffer, abuf);
+			nc = sendto(s, buffer, sizeof(buffer),
+						0, (struct sockaddr *)&clientaddr_in, addrlen);
+			if (nc == -1)
+			{
+				perror("serverUDP");
+				printf("%s: sendto error\n", "serverUDP");
+				return;
+			}
+		}
+
+		fclose(f);
+		remove(f1);
+		remove(f2);
+	}
+	else // y este para cuando ponemos un usuario en concreto
+	{
+		// dividimos el buf para obtener solo el usuario
+		aux = strtok(usr, "\r\n");
+		strcpy(abuf, aux);
+		strcpy(usr, abuf);
+
+		snprintf(f1, 50, "./aux%d.txt", id);
+		snprintf(f2, 50, "./id%d.txt", id);
+		snprintf(f3, 50, "./salida%d.txt", id);
+
+		printf("servidor : aqui5\n");
+
+		// printf("longi: %lu\n", strlen(f1));
+
+		// creamos el comando para obtener la informacion del usuario
+		snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' > ./aux%d.txt", usr, id);
+		system(cmn);
+
+		// snprintf(cmn, TAM_BUFFER, "touch ./aux%d.txt", id);
+		// system(cmn);
+		f = fopen(f1, "r");
+		if (f == NULL)
+		{
+			// printf("Error opening file!\n");
+			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
+			return;
+		}
+
+		printf("servidor : aqui6\n");
+		// por cada usuario, obtenemos su lastlogin
+
+		snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
+		system(cmn);
+		while (fgets(abuf, TAM_BUFFER, f) != NULL)
+		{
+			aux = strtok(abuf, "|");
+			strcpy(usr, aux);
+
+			snprintf(cmn, TAM_BUFFER,
+					 "lastlog -u %s | tail -n +2 | awk '"
+					 "{"
+					 " term = ($2 ~ /^pts\\/|tty$/ ? $2 : \"\");"
+					 " ip = ($3 ~ /^[0-9.]+$/ ? $3 : \"\");"
+					 " time_start = (ip ? $4 : (term ? $3 : $2));"
+					 " print \"|\" (term ? term : \"\") \"|\" (ip ? ip : \"\") \"|\" substr($0, index($0, time_start));"
+					 "}' >> id%d.txt",
+					 usr, id);
+			system(cmn);
+		}
+		fclose(f);
+
+		combinar(f1, f2, f3);
+
+		// enviamos la informacion al cliente
+		f = fopen(f3, "r");
+		if (f == NULL)
+		{
+			// printf("Error opening file!\n");
+			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
+			return;
+		}
+
+		printf("servidor : aqui7\n");
+
+		int info = 0;
+		memset(abuf, 0, sizeof(abuf));
+		while (fgets(abuf, TAM_BUFFER, f) != NULL)
+		{
+			strcpy(buffer, abuf);
+			nc = sendto(s, buffer, sizeof(buffer),
+						0, (struct sockaddr *)&clientaddr_in, addrlen);
+			if (nc == -1)
+			{
+				perror("serverUDP");
+				printf("%s: sendto error\n", "serverUDP");
+				return;
+			}
+			info++;
+			memset(abuf, 0, sizeof(abuf));
+		}
+
+		if (info == 0)
+		{
+			strcpy(buffer, "No existe el usuario\r\n");
+			nc = sendto(s, buffer, sizeof(buffer),
+						0, (struct sockaddr *)&clientaddr_in, addrlen);
+			if (nc == -1)
+			{
+				perror("serverUDP");
+				printf("%s: sendto error\n", "serverUDP");
+				return;
+			}
+		}
+
+		printf("servidor : aqui8\n");
+		fclose(f);
+		remove(f1);
+		remove(f2);
+	}
+
+	// logica del fichero
+	wS(semaforo);
+
+	f = fopen("peticiones.log", "a");
+	if (f == NULL)
 	{
 		perror("serverUDP");
 		printf("%s: sendto error\n", "serverUDP");
 		return;
 	}
+
+	int protocol;
+	socklen_t optlen = sizeof(protocol);
+	if (getsockopt(s, SOL_SOCKET, SO_PROTOCOL, &protocol, &optlen) == -1)
+	{
+		perror("getsockopt");
+		protocol = -1; // Indica que no se pudo determinar
+	}
+	const char *protocolName;
+	if (protocol == IPPROTO_TCP)
+	{
+		protocolName = "TCP";
+	}
+	else if (protocol == IPPROTO_UDP)
+	{
+		protocolName = "UDP";
+	}
+	else
+	{
+		protocolName = "Desconocido";
+	}
+
+	// abrimos el fichero con la informacion
+	FILE *fl2 = fopen(f3, "r");
+	if (fl2 == NULL)
+	{
+		// printf("Error opening file!\n");
+		perror("serverUDP");
+		printf("%s: sendto error\n", "serverUDP");
+		return;
+	}
+
+	fprintf(f, "-- COMUNICACION REALIZADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u\n",
+			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
+	fprintf(f, "-- ORDEN RECIBIDA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - ORDEN RECIBIDA: %s\n",
+			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port), nombre);
+	fprintf(f, "-- RESPUESTA ENVIADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - RESPUESTA ENVIADA: \n",
+			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
+
+	while (fgets(abuf, TAM_BUFFER, fl2) != NULL)
+	{
+		fprintf(f, "\t\t\t%s", abuf);
+	}
+
+	fprintf(f, "-- COMUNICACION FINALIZADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u\n",
+			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
+	fprintf(f, "------------------------------------------------------------------------------------------------------------------------------------\n");
+
+	fclose(fl2);
+	fclose(f);
+
+	sS(semaforo);
+	remove(f3);
+
+	freeaddrinfo(res);
+	printf("servidor : aqui9\n");
 }
 
 void combinar(char *file1, char *file2, char *outputFile)
@@ -790,4 +1122,3 @@ void combinar(char *file1, char *file2, char *outputFile)
 	fclose(f2);
 	fclose(out);
 }
-// tenemos que enviar mensaje cuiando no existe y tenemos que cambiar el nombre a all si es finer -l
