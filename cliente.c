@@ -350,13 +350,12 @@ int main(int argc, char *argv[])
 		/* Print out a startup message for the user. */
 		time(&timevar);
 
-		printf("Connected to %s on port %u at %s", host, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
-
 		servaddr_in.sin_family = AF_INET;
 
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
 
+		printf("Host: %s\n", host);
 		errcode = getaddrinfo(host, NULL, &hints, &res);
 		if (errcode != 0)
 		{
@@ -395,12 +394,14 @@ int main(int argc, char *argv[])
 		}
 
 		int flag = 1;
+		char abuf[TAM_BUFFER];
+		strcpy(abuf, buf);
 
 		while (n_retry > 0)
-		{	
-			
+		{
+
 			/* Send the request to the nameserver. */
-			if (flag == 1 && sendto(s, buf, strlen(buf), 0, (struct sockaddr *)&servaddr_in,
+			if (sendto(s, abuf, sizeof(abuf), 0, (struct sockaddr *)&servaddr_in,
 					   sizeof(struct sockaddr_in)) == -1)
 			{
 				perror(argv[0]);
@@ -435,8 +436,6 @@ int main(int argc, char *argv[])
 						printf("Host %s unknown\n", host);
 					else
 					{
-						if (flag == 0) continue;
-						flag = 0;
 						int length = strlen(buf);
 						if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 						{
@@ -495,7 +494,6 @@ int main(int argc, char *argv[])
 								// Si la fecha está vacía, imprimir el mensaje "Never logged in"
 								printf("Never logged in.\n\n\n");
 							}
-
 
 							memset(fecha, 0, 100);
 							memset(name, 0, 100);

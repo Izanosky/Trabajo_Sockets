@@ -90,6 +90,10 @@ int main(int argc, char *argv[])
 
 	char buffer[BUFFERSIZE]; /* buffer for packets to be read into */
 
+	char ultima[100];
+	int ultimoPuerto = 0;
+	memset(ultima, 0, 100);
+
 	struct sigaction vec;
 
 	semaforo = semget(IPC_PRIVATE, 1, IPC_CREAT | 0666);
@@ -294,27 +298,53 @@ int main(int argc, char *argv[])
 				if (FD_ISSET(s_UDP, &readmask))
 				{
 					/* This call will block until a new
-					 * request arrives.  Then, it will
-					 * return the address of the client,
-					 * and a buffer containing its request.
-					 * BUFFERSIZE - 1 bytes are read so that
-					 * room is left at the end of the buffer
-					 * for a null character.
+					for a null character.
 					 */
+					printf("UDP\n");
 					cc = recvfrom(s_UDP, buffer, BUFFERSIZE - 1, 0,
 								  (struct sockaddr *)&clientaddr_in, &addrlen);
+
 					if (cc == -1)
 					{
 						perror(argv[0]);
 						printf("%s: recvfrom error\n", argv[0]);
 						exit(1);
 					}
+
+					buffer[cc] = '\0';
+
+					if (buffer[cc - 1] != '\n' && buffer[cc - 2] != '\r')
+					{
+						// Si el mensaje no está completo, se salta esta ejecución
+						memset(buffer, 0, sizeof(buffer));
+						continue;
+					}
+
 					/* Make sure the message received is
 					 * null terminated.
 					 */
-					buffer[cc] = '\0';
+
+					// Verifica si el contenido y el puerto son iguales al último registrado
+					if (strcmp(buffer, ultima) == 0 && ultimoPuerto == ntohs(clientaddr_in.sin_port))
+					{
+						printf("entro en el if\n");
+						continue;
+					}
+					printf("iwi1\n");
+
+					// Apctualiza los valores para la siguiente comparación
+					strcpy(ultima, buffer);
+
+					printf("iwi2\n");
+
+					ultimoPuerto = ntohs(clientaddr_in.sin_port);
+
+					printf("entro en la funcion\n");
 					serverUDP(s_UDP, buffer, clientaddr_in);
 				}
+				// *request arrives.Then, it will *return the address of the client,
+				// 	*and a buffer containing its request.* BUFFERSIZE - 1 bytes are read so that * room is left at the end of the buffer
+				// 																					   *
 			}
 		} /* Fin del bucle infinito de atenci�n a clientes */
 		/* Cerramos los sockets UDP y TCP */
@@ -531,6 +561,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				strcpy(buf, abuf);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
+				info++;
+			}
+			if (info == 0)
+			{
+				strcpy(buf, "No existe el usuario\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
 			}
 
 			fclose(f);
@@ -719,6 +756,7 @@ void errout(char *hostname)
  */
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 {
+	printf("serverUDP buufer %s\n", buffer);
 	int id = sol;
 	struct in_addr reqaddr; /* for requested host's address */
 	struct hostent *hp;		/* pointer to host info for requested host */
@@ -797,6 +835,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			{
 				perror("serverUDP");
 				printf("%s: sendto error\n", "serverUDP");
+				freeaddrinfo(res);
 				return;
 			}
 			return;
@@ -830,11 +869,11 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			{
 				perror("serverUDP");
 				printf("%s: sendto error\n", "serverUDP");
+				freeaddrinfo(res);
 				return;
 			}
 			return;
 		}
-
 
 		snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
 		system(cmn);
@@ -869,6 +908,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			{
 				perror("serverUDP");
 				printf("%s: sendto error\n", "serverUDP");
+				freeaddrinfo(res);
 				return;
 			}
 			return;
@@ -881,18 +921,25 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			{
 				strcpy(abuf, "No existe el usuario\r\n");
 			}
-			//mostramos el hosta quien enviamos
-			
-			printf("envio info a \n");
+			// mostramos el hosta quien enviamos
+
 			strcpy(buffer, abuf);
-			nc = sendto(s, buffer, sizeof(buffer),
+			nc = sendto(s, buffer, TAM_BUFFER,
 						0, (struct sockaddr *)&clientaddr_in, addrlen);
+
 			if (nc == -1)
 			{
 				perror("serverUDP");
 				printf("%s: sendto error\n", "serverUDP");
+				freeaddrinfo(res);
 				return;
 			}
+		}
+		if (info == 0)
+		{
+			strcpy(buffer, "No existe el usuario\r\n");
+			if (send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
 		}
 
 		fclose(f);
@@ -922,8 +969,9 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		if (f == NULL)
 		{
 			// printf("Error opening file!\n");
-			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
+			perror("serverUDP");
+			printf("%s: sendto error\n", "serverUDP");
+			freeaddrinfo(res);
 			return;
 		}
 		// por cada usuario, obtenemos su lastlogin
@@ -955,8 +1003,9 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		if (f == NULL)
 		{
 			// printf("Error opening file!\n");
-			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
+			perror("serverUDP");
+			printf("%s: sendto error\n", "serverUDP");
+			freeaddrinfo(res);
 			return;
 		}
 
@@ -971,6 +1020,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			{
 				perror("serverUDP");
 				printf("%s: sendto error\n", "serverUDP");
+				freeaddrinfo(res);
 				return;
 			}
 			info++;
@@ -987,6 +1037,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			{
 				perror("serverUDP");
 				printf("%s: sendto error\n", "serverUDP");
+				freeaddrinfo(res);
 				return;
 			}
 		}
@@ -1004,6 +1055,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	{
 		perror("serverUDP");
 		printf("%s: sendto error\n", "serverUDP");
+		freeaddrinfo(res);
 		return;
 	}
 
@@ -1035,13 +1087,20 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		// printf("Error opening file!\n");
 		perror("serverUDP");
 		printf("%s: sendto error\n", "serverUDP");
+		freeaddrinfo(res);
 		return;
+	}
+	
+	if (gethostname(hostname, sizeof(hostname)) == -1)
+	{
+		perror("gethostname");
+		exit(1);
 	}
 
 	fprintf(f, "-- COMUNICACION REALIZADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u\n",
 			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 	fprintf(f, "-- ORDEN RECIBIDA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - ORDEN RECIBIDA: %s\n",
-			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port), nombre);
+			hostname, hostname, protocolName, ntohs(clientaddr_in.sin_port), nombre);
 	fprintf(f, "-- RESPUESTA ENVIADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - RESPUESTA ENVIADA: \n",
 			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 
@@ -1059,6 +1118,8 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 	sS(semaforo);
 	remove(f3);
+
+	return;
 }
 
 void combinar(char *file1, char *file2, char *outputFile)
