@@ -27,7 +27,7 @@ extern int errno;
 #define RETRIES 5				/* number of times to retry before givin up */
 #define BUFFERSIZE 1024			/* maximum size of packets to be received */
 #define PUERTO 9459
-#define TIMEOUT 6
+#define TIMEOUT 5
 #define MAXHOST 512
 #define TAM_BUFFER 516
 
@@ -384,11 +384,23 @@ int main(int argc, char *argv[])
 		n_retry = RETRIES;
 
 		int len;
+		char token[50];
+		snprintf(token, sizeof(token), "%d.txt", ntohs(myaddr_in.sin_port));
+		f = fopen(token, "w");
+		if (f == NULL)
+		{
+			printf("Error opening file!\n");
+			if (send(s, "Error opening file!\r\n", TAM_BUFFER, 0) != TAM_BUFFER)
+				exit(1);
+		}
+
+		int flag = 1;
 
 		while (n_retry > 0)
-		{
+		{	
+			
 			/* Send the request to the nameserver. */
-			if (sendto(s, buf, strlen(buf), 0, (struct sockaddr *)&servaddr_in,
+			if (flag == 1 && sendto(s, buf, strlen(buf), 0, (struct sockaddr *)&servaddr_in,
 					   sizeof(struct sockaddr_in)) == -1)
 			{
 				perror(argv[0]);
@@ -423,6 +435,8 @@ int main(int argc, char *argv[])
 						printf("Host %s unknown\n", host);
 					else
 					{
+						if (flag == 0) continue;
+						flag = 0;
 						int length = strlen(buf);
 						if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 						{
@@ -430,6 +444,7 @@ int main(int argc, char *argv[])
 							if (strcmp(buf, "No existe el usuario\r\n") == 0)
 							{
 								printf("\nNo existe el usuario\n");
+								break;
 							}
 
 							char *token = strtok(buf, "|");
@@ -467,26 +482,20 @@ int main(int argc, char *argv[])
 								strcpy(fecha, token);
 
 							puts("");
-							if (strcmp(login, "\r\n") == 0)
+							// Imprimir en formato tipo `finger`
+							printf("Login: %-20s Name: %s\n", login, name);
+							printf("Directory: %-15s Shell: %s\n", directory, shell);
+							if (strlen(fecha) > 0)
 							{
-								printf("\nNo existe el usuario\n");
+								// Si la fecha está disponible, imprimir toda la información
+								printf("On since: %s on %s from %s\n\n\n", fecha, terminal, ip);
 							}
 							else
 							{
-								// Imprimir en formato tipo `finger`
-								printf("Login: %-20s Name: %s\n", login, name);
-								printf("Directory: %-15s Shell: %s\n", directory, shell);
-								if (strlen(fecha) > 0)
-								{
-									// Si la fecha está disponible, imprimir toda la información
-									printf("On since: %s on %s from %s\n\n\n", fecha, terminal, ip);
-								}
-								else
-								{
-									// Si la fecha está vacía, imprimir el mensaje "Never logged in"
-									printf("Never logged in.\n\n\n");
-								}
+								// Si la fecha está vacía, imprimir el mensaje "Never logged in"
+								printf("Never logged in.\n\n\n");
 							}
+
 
 							memset(fecha, 0, 100);
 							memset(name, 0, 100);

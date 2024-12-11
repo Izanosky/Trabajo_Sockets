@@ -766,7 +766,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	memset(abuf, 0, sizeof(abuf));
 
 	strncpy(usr, buffer, strlen(buffer));
-	printf("servidor usr: %s\n", usr);
 	// si el usuario solo contiene \r\n escribe en nombre "all"
 	// si no, escribe el usuario en nombre
 	if (strcmp(usr, "\r\n") == 0)
@@ -780,8 +779,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		strncpy(nombre, usr, strlen(usr));
 		strcat(nombre, "\0");
 	}
-
-	printf("servidor : aqui\n");
 
 	// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
 	if (strcmp(usr, "\r\n") == 0)
@@ -807,8 +804,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 		snprintf(f2, 50, "touch ./aux%d.txt", id);
 		system(f2);
-
-		printf("servidor : aqui2\n");
 
 		while (fgets(usr, 50, f) != NULL)
 		{
@@ -840,7 +835,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			return;
 		}
 
-		printf("servidor : aqui3\n");
 
 		snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
 		system(cmn);
@@ -880,8 +874,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			return;
 		}
 
-		printf("servidor : aqui4\n");
-
 		int info = 0;
 		while (fgets(abuf, TAM_BUFFER, f) != NULL)
 		{
@@ -889,6 +881,9 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			{
 				strcpy(abuf, "No existe el usuario\r\n");
 			}
+			//mostramos el hosta quien enviamos
+			
+			printf("envio info a \n");
 			strcpy(buffer, abuf);
 			nc = sendto(s, buffer, sizeof(buffer),
 						0, (struct sockaddr *)&clientaddr_in, addrlen);
@@ -915,8 +910,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		snprintf(f2, 50, "./id%d.txt", id);
 		snprintf(f3, 50, "./salida%d.txt", id);
 
-		printf("servidor : aqui5\n");
-
 		// printf("longi: %lu\n", strlen(f1));
 
 		// creamos el comando para obtener la informacion del usuario
@@ -933,8 +926,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 				errout(hostname);
 			return;
 		}
-
-		printf("servidor : aqui6\n");
 		// por cada usuario, obtenemos su lastlogin
 
 		snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
@@ -969,14 +960,12 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			return;
 		}
 
-		printf("servidor : aqui7\n");
-
 		int info = 0;
 		memset(abuf, 0, sizeof(abuf));
 		while (fgets(abuf, TAM_BUFFER, f) != NULL)
 		{
 			strcpy(buffer, abuf);
-			nc = sendto(s, buffer, sizeof(buffer),
+			nc = sendto(s, buffer, TAM_BUFFER,
 						0, (struct sockaddr *)&clientaddr_in, addrlen);
 			if (nc == -1)
 			{
@@ -986,12 +975,13 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			}
 			info++;
 			memset(abuf, 0, sizeof(abuf));
+			memset(buffer, 0, sizeof(buffer));
 		}
 
 		if (info == 0)
 		{
 			strcpy(buffer, "No existe el usuario\r\n");
-			nc = sendto(s, buffer, sizeof(buffer),
+			nc = sendto(s, buffer, TAM_BUFFER,
 						0, (struct sockaddr *)&clientaddr_in, addrlen);
 			if (nc == -1)
 			{
@@ -1001,7 +991,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 			}
 		}
 
-		printf("servidor : aqui8\n");
 		fclose(f);
 		remove(f1);
 		remove(f2);
@@ -1070,9 +1059,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 	sS(semaforo);
 	remove(f3);
-
-	freeaddrinfo(res);
-	printf("servidor : aqui9\n");
 }
 
 void combinar(char *file1, char *file2, char *outputFile)
