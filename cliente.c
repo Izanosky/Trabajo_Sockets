@@ -436,7 +436,6 @@ int main(int argc, char *argv[])
 						printf("Host %s unknown\n", host);
 					else
 					{
-						printf("buf: %saaa\n", buf);
 						int length = strlen(buf);
 						if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 						{

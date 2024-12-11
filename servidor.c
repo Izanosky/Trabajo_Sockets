@@ -1093,6 +1093,13 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		return;
 	}
 
+	struct sockaddr_in *sa = &clientaddr_in;
+	if (getnameinfo((struct sockaddr *)sa, addrlen, hostname, sizeof(hostname), NULL, 0, NI_NAMEREQD) != 0)
+	{
+		perror("getnameinfo");
+		return;
+	}
+
 	fprintf(f, "-- COMUNICACION REALIZADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u\n",
 			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 	fprintf(f, "-- ORDEN RECIBIDA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - ORDEN RECIBIDA: %s\n",
