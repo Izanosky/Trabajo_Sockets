@@ -300,7 +300,6 @@ int main(int argc, char *argv[])
 					/* This call will block until a new
 					for a null character.
 					 */
-					printf("UDP\n");
 					cc = recvfrom(s_UDP, buffer, BUFFERSIZE - 1, 0,
 								  (struct sockaddr *)&clientaddr_in, &addrlen);
 
@@ -327,19 +326,14 @@ int main(int argc, char *argv[])
 					// Verifica si el contenido y el puerto son iguales al último registrado
 					if (strcmp(buffer, ultima) == 0 && ultimoPuerto == ntohs(clientaddr_in.sin_port))
 					{
-						printf("entro en el if\n");
 						continue;
 					}
-					printf("iwi1\n");
 
-					// Apctualiza los valores para la siguiente comparación
+					// Actualiza los valores para la siguiente comparación
 					strcpy(ultima, buffer);
-
-					printf("iwi2\n");
 
 					ultimoPuerto = ntohs(clientaddr_in.sin_port);
 
-					printf("entro en la funcion\n");
 					serverUDP(s_UDP, buffer, clientaddr_in);
 				}
 				// *request arrives.Then, it will *return the address of the client,
@@ -756,7 +750,6 @@ void errout(char *hostname)
  */
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 {
-	printf("serverUDP buufer %s\n", buffer);
 	int id = sol;
 	struct in_addr reqaddr; /* for requested host's address */
 	struct hostent *hp;		/* pointer to host info for requested host */
@@ -934,12 +927,21 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 				freeaddrinfo(res);
 				return;
 			}
+			info++;
 		}
 		if (info == 0)
 		{
 			strcpy(buffer, "No existe el usuario\r\n");
-			if (send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
+			nc = sendto(s, buffer, TAM_BUFFER,
+						0, (struct sockaddr *)&clientaddr_in, addrlen);
+
+			if (nc == -1)
+			{
+				perror("serverUDP");
+				printf("%s: sendto error\n", "serverUDP");
+				freeaddrinfo(res);
+				return;
+			}
 		}
 
 		fclose(f);
@@ -1090,17 +1092,11 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		freeaddrinfo(res);
 		return;
 	}
-	
-	if (gethostname(hostname, sizeof(hostname)) == -1)
-	{
-		perror("gethostname");
-		exit(1);
-	}
 
 	fprintf(f, "-- COMUNICACION REALIZADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u\n",
 			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 	fprintf(f, "-- ORDEN RECIBIDA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - ORDEN RECIBIDA: %s\n",
-			hostname, hostname, protocolName, ntohs(clientaddr_in.sin_port), nombre);
+			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port), nombre);
 	fprintf(f, "-- RESPUESTA ENVIADA --\n\t HOSTNAME: %s - IP: %s - PROTOCOLO: %s - PUERTO EFIMERO: %u - RESPUESTA ENVIADA: \n",
 			hostname, inet_ntoa(clientaddr_in.sin_addr), protocolName, ntohs(clientaddr_in.sin_port));
 

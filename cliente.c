@@ -355,7 +355,6 @@ int main(int argc, char *argv[])
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
 
-		printf("Host: %s\n", host);
 		errcode = getaddrinfo(host, NULL, &hints, &res);
 		if (errcode != 0)
 		{
@@ -398,10 +397,10 @@ int main(int argc, char *argv[])
 		strcpy(abuf, buf);
 
 		while (n_retry > 0)
-		{
-
+		{	
+			
 			/* Send the request to the nameserver. */
-			if (sendto(s, abuf, sizeof(abuf), 0, (struct sockaddr *)&servaddr_in,
+			if (sendto(s, abuf, strlen(abuf), 0, (struct sockaddr *)&servaddr_in,
 					   sizeof(struct sockaddr_in)) == -1)
 			{
 				perror(argv[0]);
@@ -427,6 +426,7 @@ int main(int argc, char *argv[])
 					else
 					{
 						printf("Unable to get response from");
+						fclose(f);
 						exit(1);
 					}
 				}
@@ -436,6 +436,7 @@ int main(int argc, char *argv[])
 						printf("Host %s unknown\n", host);
 					else
 					{
+						printf("buf: %saaa\n", buf);
 						int length = strlen(buf);
 						if (buf[length - 1] == '\n' && buf[length - 2] == '\r')
 						{
@@ -495,6 +496,7 @@ int main(int argc, char *argv[])
 								printf("Never logged in.\n\n\n");
 							}
 
+
 							memset(fecha, 0, 100);
 							memset(name, 0, 100);
 						}
@@ -508,5 +510,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+
+		fclose(f);
 	}
 }
