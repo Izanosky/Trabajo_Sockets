@@ -52,6 +52,17 @@ int semaforo;
 // para identificar el numero de solicitud
 int sol = 0;
 
+// Estructura para almacenar las peticiones en udp para ver si estan duplicadas
+typedef struct
+{
+	time_t tiempo;
+	uint16_t client_port;
+	char buffer[TAM_BUFFER]; // Almacenar la solicitud
+} peticion;
+
+peticion peticiones[100];
+int peticion_count = 0;
+
 void wS(int sem_id)
 {
 	struct sembuf operation = {0, -1, 0};
@@ -310,24 +321,39 @@ int main(int argc, char *argv[])
 						exit(1);
 					}
 
-					buffer[cc] = '\0';
-
-					if (buffer[cc - 1] != '\n' && buffer[cc - 2] != '\r')
-					{
-						// Si el mensaje no está completo, se salta esta ejecución
-						memset(buffer, 0, sizeof(buffer));
-						continue;
-					}
+					// if (buffer[cc - 1] != '\n' && buffer[cc - 2] != '\r')
+					// {
+					// 	// Si el mensaje no está completo, se salta esta ejecución
+					// 	memset(buffer, 0, sizeof(buffer));
+					// 	continue;
+					// }
 
 					/* Make sure the message received is
 					 * null terminated.
 					 */
 
-					// Verifica si el contenido y el puerto son iguales al último registrado
-					if (strcmp(buffer, ultima) == 0 && ultimoPuerto == ntohs(clientaddr_in.sin_port))
+					buffer[cc] = '\0';
+
+					for (int i = 0; i < peticion_count; i++)
 					{
-						continue;
+						if (time(NULL) >= peticiones[i].tiempo + 1  &&
+							peticiones[i].client_port == ntohs(clientaddr_in.sin_port) &&
+							strcmp(peticiones[i].buffer, buffer) == 0)
+						{
+							continue;
+						}
 					}
+
+					peticiones[peticion_count].tiempo = time(NULL);
+					peticiones[peticion_count].client_port = ntohs(clientaddr_in.sin_port);
+					strncpy(peticiones[peticion_count].buffer, buffer, TAM_BUFFER);
+					peticion_count++;
+					if (peticion_count == 100)
+					{
+						peticion_count = 0;
+					}
+
+					
 
 					// Actualiza los valores para la siguiente comparación
 					strcpy(ultima, buffer);
@@ -346,6 +372,11 @@ int main(int argc, char *argv[])
 		close(s_UDP);
 
 		printf("\nFin de programa servidor!\n");
+		if (semctl(semaforo, 0, IPC_RMID) == -1)
+		{
+			perror("semctl IPC_RMID");
+			exit(EXIT_FAILURE);
+		}
 
 	default: /* Parent process comes here. */
 		exit(0);

@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 				strcpy(host, token);
 			}
 		}
-	}
+	}	
 
 	// comparacion para saber si es UDP O TCP
 	if (strcmp(argv[1], "TCP") == 0)
@@ -355,6 +355,7 @@ int main(int argc, char *argv[])
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
 
+
 		errcode = getaddrinfo(host, NULL, &hints, &res);
 		if (errcode != 0)
 		{
@@ -362,10 +363,9 @@ int main(int argc, char *argv[])
 					argv[0], argv[1]);
 			exit(1);
 		}
-		else
-		{
-			servaddr_in.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
-		}
+		
+		servaddr_in.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+		
 		freeaddrinfo(res);
 
 		servaddr_in.sin_port = htons(PUERTO);
@@ -392,7 +392,6 @@ int main(int argc, char *argv[])
 				exit(1);
 		}
 
-		int flag = 1;
 		char abuf[TAM_BUFFER];
 		strcpy(abuf, buf);
 
