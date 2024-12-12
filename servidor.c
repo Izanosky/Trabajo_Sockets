@@ -540,8 +540,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						 "getent passwd | grep -iw %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' >> %s",
 						 usr, f1);
 
-				printf("Comando generado: %s\n", cmn);
-
 				// Ejecutar el comando
 				system(cmn);
 			}
