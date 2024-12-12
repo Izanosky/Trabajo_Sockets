@@ -55,8 +55,7 @@ int sol = 0;
 // Estructura para almacenar las peticiones en udp para ver si estan duplicadas
 typedef struct
 {
-	time_t tiempo;
-	uint16_t client_port;
+	int client_port;
 	char buffer[TAM_BUFFER]; // Almacenar la solicitud
 } peticion;
 
@@ -279,8 +278,12 @@ int main(int argc, char *argv[])
 					 * peer, and a new socket descriptor, s,
 					 * for that connection.
 					 */
-					s_TCP = accept(ls_TCP, (struct sockaddr *)&clientaddr_in, &addrlen);
+					wS(semaforo);
 					sol++;
+					sS(semaforo);
+
+					s_TCP = accept(ls_TCP, (struct sockaddr *)&clientaddr_in, &addrlen);
+
 					if (s_TCP == -1)
 						exit(1);
 					switch (fork())
@@ -336,15 +339,13 @@ int main(int argc, char *argv[])
 
 					for (int i = 0; i < peticion_count; i++)
 					{
-						if (time(NULL) >= peticiones[i].tiempo + 1  &&
-							peticiones[i].client_port == ntohs(clientaddr_in.sin_port) &&
+						if (peticiones[i].client_port == ntohs(clientaddr_in.sin_port) &&
 							strcmp(peticiones[i].buffer, buffer) == 0)
 						{
 							continue;
 						}
 					}
 
-					peticiones[peticion_count].tiempo = time(NULL);
 					peticiones[peticion_count].client_port = ntohs(clientaddr_in.sin_port);
 					strncpy(peticiones[peticion_count].buffer, buffer, TAM_BUFFER);
 					peticion_count++;
@@ -353,12 +354,13 @@ int main(int argc, char *argv[])
 						peticion_count = 0;
 					}
 
-					
-
 					// Actualiza los valores para la siguiente comparación
 					strcpy(ultima, buffer);
 
 					ultimoPuerto = ntohs(clientaddr_in.sin_port);
+					wS(semaforo);
+					sol++;
+					sS(semaforo);
 
 					serverUDP(s_UDP, buffer, clientaddr_in);
 				}
@@ -435,10 +437,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			errout(hostname);
 		}
 
-		// Verificar si el búfer recibido está vacío
 		if (len == 0)
 		{
-			break; // Salir del bucle si no hay datos
+			break;
 		}
 
 		if (len > 0 && strncmp(&buf[len - 2], "\r\n", 2) == 0)
@@ -460,12 +461,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 			if (len1 == 0)
 			{
-				break; // Salir del bucle si no hay datos
+				break;
 			}
 
 			len += len1;
 
-			// Comprobación de los caracteres de fin de línea
 			int length = strlen(buf);
 			if (length > 0 && strncmp(&buf[len - 2], "\r\n", 2) == 0)
 			{
@@ -505,11 +505,17 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		// este if es para cuando ponemos ./cliente TCP @localhost, es decir, todos los usuarios activos
 		if (strcmp(usr, "\r\n") == 0)
 		{
-			snprintf(cmn, TAM_BUFFER, "who | awk '{print $1}' > id%d.txt", id);
-			snprintf(f1, 50, "./id%d.txt", id);
+			snprintf(f1, 50, "aux%d.txt", id);
+			snprintf(f2, 50, "id%d.txt", id);
+			snprintf(f3, 50, "salida%d.txt", id);
+
+			char f4[50];
+			snprintf(f4, 50, "./who%d.txt", id);
+
+			snprintf(cmn, TAM_BUFFER, "who | awk '{print $1}' > %s", f4);
 			system(cmn);
 
-			f = fopen(f1, "r");
+			f = fopen(f4, "r");
 			if (f == NULL)
 			{
 				// printf("Error opening file!\n");
@@ -518,24 +524,32 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				break;
 			}
 
-			snprintf(f2, 50, "touch ./aux%d.txt", id);
-			system(f2);
+			
 
 			while (fgets(usr, 50, f) != NULL)
 			{
-				// hacemos esto para eliminar el \n del final ya que si no, nunca encuentra usuarios
+				// eliminamos el salto de
 				if ((aux = strchr(usr, '\n')) != NULL)
 					*aux = '\0';
-				snprintf(cmn, TAM_BUFFER, "getent passwd | grep -iw  %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' >> ./aux%d.txt", usr, id);
+
+				// ignoramos líneas vacías
+				if (strlen(usr) <= 3)
+					continue;
+
+				snprintf(cmn, TAM_BUFFER,
+						 "getent passwd | grep -iw %s | awk -F: '{print $1 \"|\" $5 \"|\" $6 \"|\" $7}' >> %s",
+						 usr, f1);
+
+				printf("Comando generado: %s\n", cmn);
+
+				// Ejecutar el comando
 				system(cmn);
 			}
-
 			fclose(f);
-			remove(f1);
 
-			snprintf(f1, 50, "./aux%d.txt", id);
-			snprintf(f2, 50, "./id%d.txt", id);
-			snprintf(f3, 50, "./salida%d.txt", id);
+			snprintf(cmn, TAM_BUFFER, "touch %s", f1);
+			system(cmn);
+
 			f = fopen(f1, "r");
 			if (f == NULL)
 			{
@@ -545,8 +559,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				break;
 			}
 
-			snprintf(cmn, TAM_BUFFER, "touch ./id%d.txt", id);
-			system(cmn);
+			memset(abuf, 0, sizeof(abuf));
+
 			while (fgets(abuf, TAM_BUFFER, f) != NULL)
 			{
 				aux = strtok(abuf, "|");
@@ -559,8 +573,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						 " ip = ($3 ~ /^[0-9.]+$/ ? $3 : \"\");"
 						 " time_start = (ip ? $4 : (term ? $3 : $2));"
 						 " print \"|\" (term ? term : \"\") \"|\" (ip ? ip : \"\") \"|\" substr($0, index($0, time_start));"
-						 "}' >> id%d.txt",
-						 usr, id);
+						 "}' >> %s",
+						 usr, f2);
+
 				system(cmn);
 			}
 			fclose(f);
@@ -598,6 +613,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			fclose(f);
 			remove(f1);
 			remove(f2);
+			remove(f4);
 		}
 		else // y este para cuando ponemos un usuario en concreto
 		{
