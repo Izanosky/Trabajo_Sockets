@@ -311,11 +311,7 @@ int main(int argc, char *argv[])
 				/* Comprobamos si el socket seleccionado es el socket UDP */
 				if (FD_ISSET(s_UDP, &readmask))
 				{
-					/* This call will block until a new
-					for a null character.
-					 */
-					cc = recvfrom(s_UDP, buffer, BUFFERSIZE - 1, 0,
-								  (struct sockaddr *)&clientaddr_in, &addrlen);
+					cc = recvfrom(s_UDP, buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&clientaddr_in, &addrlen);
 
 					if (cc == -1)
 					{
@@ -324,46 +320,47 @@ int main(int argc, char *argv[])
 						exit(1);
 					}
 
-					// if (buffer[cc - 1] != '\n' && buffer[cc - 2] != '\r')
-					// {
-					// 	// Si el mensaje no está completo, se salta esta ejecución
-					// 	memset(buffer, 0, sizeof(buffer));
-					// 	continue;
-					// }
-
-					/* Make sure the message received is
-					 * null terminated.
-					 */
-
 					buffer[cc] = '\0';
 
+					// Verificación de duplicados antes de guardar
+					int esDuplicado = 0;
 					for (int i = 0; i < peticion_count; i++)
 					{
 						if (peticiones[i].client_port == ntohs(clientaddr_in.sin_port) &&
 							strcmp(peticiones[i].buffer, buffer) == 0)
 						{
-							continue;
+							esDuplicado = 1;
+							break;
 						}
 					}
 
+					if (esDuplicado)
+					{
+						// Petición duplicada, ignorar
+						continue;
+					}
+
+					// Guardar la petición si no es duplicada
 					peticiones[peticion_count].client_port = ntohs(clientaddr_in.sin_port);
 					strncpy(peticiones[peticion_count].buffer, buffer, TAM_BUFFER);
 					peticion_count++;
+
 					if (peticion_count == 100)
 					{
-						peticion_count = 0;
+						peticion_count = 0; // Resetear el contador si se alcanza el límite
 					}
 
 					// Actualiza los valores para la siguiente comparación
 					strcpy(ultima, buffer);
-
 					ultimoPuerto = ntohs(clientaddr_in.sin_port);
+
 					wS(semaforo);
 					sol++;
 					sS(semaforo);
 
 					serverUDP(s_UDP, buffer, clientaddr_in);
 				}
+
 				// *request arrives.Then, it will *return the address of the client,
 				// 	*and a buffer containing its request.* BUFFERSIZE - 1 bytes are read so that * room is left at the end of the buffer
 				// 																					   *
@@ -524,8 +521,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				break;
 			}
 
-			
-
 			while (fgets(usr, 50, f) != NULL)
 			{
 				// eliminamos el salto de
@@ -544,9 +539,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				system(cmn);
 			}
 			fclose(f);
-
-			snprintf(cmn, TAM_BUFFER, "touch %s", f1);
-			system(cmn);
 
 			f = fopen(f1, "r");
 			if (f == NULL)
